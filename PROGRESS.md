@@ -74,3 +74,21 @@
 ## 5. Заметки
 - Модуль Go: `sigame` (без VCS-хоста). Время на проводе — мс (int64). Медиа — content-addressed (sha256) на диске, HTTP Range через `http.ServeContent`.
 - `index.html` в корне — отдельная мини-игра (Happy Wheels-like на Matter.js), к бекенду отношения не имеет.
+
+## 6. Реализация (обновлено 2026-09-19, ночь)
+GitHub: https://github.com/ruslanfb/sigame-server (public, `main`). Коммиты по пакетам, все тесты `-race` зелёные.
+
+| Пакет | Состояние |
+|---|---|
+| `internal/packs` + `internal/db` | ✅ модель, валидация, репозиторий (optimistic concurrency, refcount медиа, поиск с кириллицей), миграции |
+| `internal/media` | ✅ content-addressed хранилище, сниффинг MIME, ffprobe, HTTP Range-раздача, CSP для html |
+| `internal/siq` | ✅ импорт v3/v4/v5, экспорт v5, отчёт совместимости; 58 паков / 5331 вопрос; round-trip |
+| `internal/ai` | ✅ OpenRouter-судья (structured outputs, retry, кэш), fuzzy-судья по правилам SIGame, композит |
+| `internal/config`, `internal/lan`, `internal/clock` | ✅ |
+| `internal/ws` | частично: kernel-RTT (TCP_INFO), envelope-кодек, rate limiter; соединение/hub — после buzzer |
+| `internal/buzzer` | 🔄 агент пишет (AnchoredHybrid + симулятор) |
+| `internal/engine` | 🔄 агент пишет (все типы вопросов, финал, апелляции) |
+| `internal/httpapi` | 🔄 агент пишет (packs/media/import/export/ai/system; комнаты — после room) |
+| `internal/room`, `cmd/sigame`, интеграционный тест, README | ⏳ после buzzer/engine |
+
+Документация: `docs/ops.md`, `docs/packs.md`, `docs/ai-showman.md`, `docs/adr/*`; `docs/buzzer.md` и `docs/protocol*.md` появятся вместе с пакетами.
