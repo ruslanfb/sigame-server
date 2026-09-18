@@ -42,7 +42,7 @@ func TestOpenAPIDocument(t *testing.T) {
 	for _, tg := range doc.Tags {
 		tagNames = append(tagNames, tg.Name)
 	}
-	require.ElementsMatch(t, []string{"packs", "media", "ai", "system"}, tagNames)
+	require.ElementsMatch(t, []string{"packs", "media", "rooms", "buzzer", "ai", "system"}, tagNames)
 
 	wantOps := map[string]bool{
 		"listPacks": false, "getPack": false, "createPack": false, "updatePack": false, "deletePack": false,
@@ -51,6 +51,9 @@ func TestOpenAPIDocument(t *testing.T) {
 		"addTheme": false, "updateTheme": false, "deleteTheme": false, "reorderThemes": false,
 		"addQuestion": false, "updateQuestion": false, "deleteQuestion": false, "reorderQuestions": false,
 		"uploadMedia": false, "getMediaMeta": false, "deleteMedia": false, "streamMedia": false,
+		"listRooms": false, "createRoom": false, "getRoom": false, "joinRoom": false, "leaveRoom": false,
+		"updateRoomSettings": false, "kickPerson": false, "unbanPerson": false, "transferHost": false,
+		"closeRoom": false, "getBuzzLog": false, "listBuzzerPresets": false, "getBuzzerPreset": false,
 		"getAIStatus": false, "listAIModels": false, "testAI": false,
 		"getHealth": false, "getSystemInfo": false,
 	}

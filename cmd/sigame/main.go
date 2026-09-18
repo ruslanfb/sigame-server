@@ -18,12 +18,15 @@ import (
 	"time"
 
 	"sigame/internal/ai"
+	"sigame/internal/clock"
 	"sigame/internal/config"
 	"sigame/internal/db"
 	"sigame/internal/httpapi"
 	"sigame/internal/lan"
 	"sigame/internal/media"
 	"sigame/internal/packs"
+	"sigame/internal/room"
+	"sigame/internal/ws"
 )
 
 // version is injected at build time via -ldflags "-X main.version=...".
@@ -76,11 +79,33 @@ func run(ctx context.Context, printOpenAPI bool) error {
 	}
 
 	judge, judgeStatus := newJudge(cfg, logger)
+	packRepo := packs.NewRepo(sqlDB)
+	clk := clock.NewReal()
+
+	rooms := room.NewManager(room.ManagerDeps{
+		DB:     sqlDB,
+		Packs:  packRepo,
+		Media:  store,
+		Judge:  judge,
+		Clock:  clk,
+		Logger: logger,
+		Cfg: room.RoomConfig{
+			MaxRooms:           cfg.MaxRooms,
+			MaxPlayers:         cfg.MaxPlayersPerRoom,
+			RoomTTL:            cfg.RoomTTL,
+			MediaFallbackMaxMs: 60_000,
+			ConnQualityEveryMs: 5_000,
+			ResumeBufferSize:   500,
+			AIShowmanName:      "ИИ-ведущий",
+			AITimeout:          cfg.AIJudgeTimeout,
+		},
+	})
 
 	api, err := httpapi.New(httpapi.Deps{
 		Cfg:       cfg,
-		Packs:     packs.NewRepo(sqlDB),
+		Packs:     packRepo,
 		Media:     store,
+		Rooms:     rooms,
 		AI:        judge,
 		AIStatus:  judgeStatus,
 		Ping:      sqlDB.PingContext,
@@ -92,6 +117,16 @@ func run(ctx context.Context, printOpenAPI bool) error {
 	if err != nil {
 		return err
 	}
+	ws.Mount(api.Router, &ws.Handler{
+		Rooms: rooms,
+		Cfg: ws.Config{
+			MaxMessageBytes: cfg.WSMaxMessageBytes,
+			MessagesPerSec:  cfg.WSMessagesPerSec,
+			AllowedOrigins:  cfg.CORSOrigins,
+		},
+		Clock:  clk,
+		Logger: logger,
+	})
 
 	if printOpenAPI {
 		b, err := json.MarshalIndent(api.API.OpenAPI(), "", "  ")
@@ -107,6 +142,9 @@ func run(ctx context.Context, printOpenAPI bool) error {
 		Handler:           api,
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       120 * time.Second,
+		// ConnContext exposes the raw TCP connection to the WebSocket handler
+		// so the buzzer can read the kernel's RTT estimate (TCP_INFO).
+		ConnContext: ws.ConnContext,
 	}
 
 	ln, err := net.Listen("tcp", cfg.Addr)
@@ -139,6 +177,9 @@ func run(ctx context.Context, printOpenAPI bool) error {
 	}
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+	// Rooms first: they notify clients (ROOM_CLOSED, close 1001) and persist
+	// state; then the HTTP server drains.
+	rooms.Shutdown(shutdownCtx)
 	return srv.Shutdown(shutdownCtx)
 }
 

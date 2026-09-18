@@ -3,6 +3,7 @@ package httpapi
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"image"
 	"image/color"
@@ -29,6 +30,7 @@ type testEnv struct {
 	repo  *packs.Repo
 	store *media.DiskStore
 	cfg   *config.Config
+	db    *sql.DB
 }
 
 type envConfig struct {
@@ -90,7 +92,7 @@ func newTestEnv(t *testing.T, opts ...envOpt) *testEnv {
 	}
 	srv, err := New(deps)
 	require.NoError(t, err)
-	return &testEnv{srv: srv, repo: repo, store: store, cfg: cfg}
+	return &testEnv{srv: srv, repo: repo, store: store, cfg: cfg, db: sqlDB}
 }
 
 // do performs a request against the router. body may be nil, []byte,

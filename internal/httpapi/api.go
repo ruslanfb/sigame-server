@@ -3,8 +3,8 @@
 // /docs, the OpenAPI 3.1 document at /openapi.json and /openapi.yaml, a tiny
 // landing page at / and media streaming with Range support at /media/{id}.
 //
-// Room and game endpoints are registered on the same huma API by rooms.go
-// (added separately); every handler file exposes a register* method that New
+// Room endpoints (rooms.go) and buzzer presets (presets.go) are registered on
+// the same huma API; every handler file exposes a register* method that New
 // calls in order, so adding a group is a one-line change.
 //
 // Errors are RFC 9457 problem details (huma.ErrorModel). Domain errors of the
@@ -30,6 +30,7 @@ import (
 	"sigame/internal/config"
 	"sigame/internal/media"
 	"sigame/internal/packs"
+	"sigame/internal/room"
 )
 
 const (
@@ -52,6 +53,8 @@ const (
 const (
 	tagPacks  = "packs"
 	tagMedia  = "media"
+	tagRooms  = "rooms"
+	tagBuzzer = "buzzer"
 	tagAI     = "ai"
 	tagSystem = "system"
 )
@@ -64,7 +67,16 @@ const apiDescription = "SIGame Server is a self-hosted backend for «Своя и
 	"streamed with HTTP Range support at GET /media/{id}. Every error is an RFC 9457 problem document " +
 	"(application/problem+json) with `status`, `title` and `detail`; validation failures add an `errors` " +
 	"list whose `location` is a JSON pointer into the request body (e.g. /rounds/0/themes/2/name) and " +
-	"whose `value` is the machine-readable problem code."
+	"whose `value` is the machine-readable problem code.\n\n" +
+	"Rooms: a game is a room identified by a 5-character code. POST /rooms creates one from a stored pack " +
+	"(rules, timers, buzzer preset or explicit buzzer settings, showman mode) and returns the room together " +
+	"with a secret `hostToken`; it is shown once, so the creator must keep it. Anyone joins with " +
+	"POST /rooms/{code}/join (name, role, optional password) and receives a `sessionToken`; the creator " +
+	"sends the host token in the `X-Host-Token` header of that request to claim host rights (isHost). The " +
+	"client then opens the WebSocket GET /ws?room=CODE&token=SESSION and plays over it (see docs/protocol.md); " +
+	"leaving is POST /rooms/{code}/leave. The host-only REST operations (PATCH settings, kick/unban, " +
+	"transfer-host, buzz-log, DELETE) require the `X-Host-Token` header: 401 when it is missing, 403 when it " +
+	"does not match the room. GET /buzzer-presets lists the named buzzer configurations a room can start from."
 
 // AIStatusProvider exposes the operator-facing state of the AI judge:
 // status without network access, the upstream model list and a live test
@@ -86,6 +98,10 @@ type Deps struct {
 	// MediaHandler serves GET/HEAD /media/{id}. Optional; the default is
 	// media.Handler(Media, Cfg.AllowHTMLScripts).
 	MediaHandler http.Handler
+
+	// Rooms hosts the game rooms behind /rooms and is consulted by
+	// /buzzer-presets. Optional: when nil every room operation answers 503.
+	Rooms *room.Manager
 
 	// AI is the judge used by POST /ai/test when AIStatus is nil. May be nil.
 	AI ai.Judge
@@ -174,6 +190,8 @@ func New(d Deps) (*Server, error) {
 	s.registerPacks()
 	s.registerNested()
 	s.registerMedia()
+	s.registerRooms()
+	s.registerPresets()
 	s.registerAI()
 	s.registerSystem()
 
@@ -202,6 +220,8 @@ func (s *Server) humaConfig() huma.Config {
 	cfg.Tags = []*huma.Tag{
 		{Name: tagPacks, Description: "Question packs: CRUD, nested round/theme/question editing, validation, .siq import and export."},
 		{Name: tagMedia, Description: "Content-addressed media store (images, audio, video, html): upload, metadata, deletion; streaming at GET /media/{id}."},
+		{Name: tagRooms, Description: "Game rooms: create (host token), list, get, join (session token for /ws), leave, and the host-only settings, kick/ban, host transfer, buzz log and close."},
+		{Name: tagBuzzer, Description: "Named buzzer presets (lanWired, wifiParty, internetFair, tournament, noRace) with their full settings."},
 		{Name: tagAI, Description: "AI showman (OpenRouter) diagnostics: status, model list and a live judging test."},
 		{Name: tagSystem, Description: "Health, version, LAN addresses and effective limits."},
 	}
