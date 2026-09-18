@@ -1,0 +1,19 @@
+services:
+  sigame:
+    build: .
+    image: sigame-server:local
+    ports:
+      - "8080:8080"
+    environment:
+      SIGAME_ADDR: ":8080"
+      SIGAME_DATA_DIR: /data
+      SIGAME_LOG_FORMAT: json
+      # SIGAME_PUBLIC_URL: https://quiz.example.com
+      # OPENROUTER_API_KEY: sk-or-v1-...
+      # OPENROUTER_MODEL: tencent/hy4-preview
+    volumes:
+      - sigame-data:/data
+    restart: unless-stopped
+
+volumes:
+  sigame-data:
