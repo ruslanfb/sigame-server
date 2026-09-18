@@ -222,9 +222,9 @@ func (v *ValidationError) checkNumberSet(path string, ns *NumberSet) {
 	}
 	if ns.Min > ns.Max {
 		v.add(path+"/min", CodeMismatch, "min (%d) must not exceed max (%d)", ns.Min, ns.Max)
-	} else if ns.Step > 0 && (ns.Max-ns.Min)%ns.Step != 0 {
-		v.add(path+"/step", CodeMismatch, "max-min (%d) must be a multiple of step (%d)", ns.Max-ns.Min, ns.Step)
 	}
+	// Step need not divide max-min: SIGame offers min, min+step, ... <= max
+	// (e.g. 100..1000 step 200 → 100, 300, 500, 700, 900).
 }
 
 func (v *ValidationError) checkItems(path string, items []ContentItem) {

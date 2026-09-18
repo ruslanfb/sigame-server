@@ -160,8 +160,6 @@ func TestValidate_Table(t *testing.T) {
 			"/rounds/0/themes/0/questions/3/params/answerDeviation", CodeOutOfRange},
 		{"secret min > max", func(p *Pack) { q(p, 1).Params.Price = &NumberSet{Min: 500, Max: 100} },
 			"/rounds/0/themes/0/questions/1/params/price/min", CodeMismatch},
-		{"secret step does not divide", func(p *Pack) { q(p, 1).Params.Price = &NumberSet{Min: 100, Max: 500, Step: 300} },
-			"/rounds/0/themes/0/questions/1/params/price/step", CodeMismatch},
 		{"secret step negative", func(p *Pack) { q(p, 1).Params.Price = &NumberSet{Min: 0, Max: 0, Step: -1} },
 			"/rounds/0/themes/0/questions/1/params/price/step", CodeOutOfRange},
 		{"secret fixed price", func(p *Pack) { q(p, 1).Params.Price = &NumberSet{Min: 300, Max: 300} }, "", ""},
