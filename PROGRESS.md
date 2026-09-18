@@ -75,8 +75,8 @@
 - Модуль Go: `sigame` (без VCS-хоста). Время на проводе — мс (int64). Медиа — content-addressed (sha256) на диске, HTTP Range через `http.ServeContent`.
 - `index.html` в корне — отдельная мини-игра (Happy Wheels-like на Matter.js), к бекенду отношения не имеет.
 
-## 6. Реализация (обновлено 2026-09-19, ночь)
-GitHub: https://github.com/ruslanfb/sigame-server (public, `main`). Коммиты по пакетам, все тесты `-race` зелёные.
+## 6. Реализация (обновлено 2026-09-19)
+GitHub: https://github.com/ruslanfb/sigame-server (public, `main`). Все 13 пакетов, `go test -race ./...` зелёный.
 
 | Пакет | Состояние |
 |---|---|
@@ -84,11 +84,14 @@ GitHub: https://github.com/ruslanfb/sigame-server (public, `main`). Коммит
 | `internal/media` | ✅ content-addressed хранилище, сниффинг MIME, ffprobe, HTTP Range-раздача, CSP для html |
 | `internal/siq` | ✅ импорт v3/v4/v5, экспорт v5, отчёт совместимости; 58 паков / 5331 вопрос; round-trip |
 | `internal/ai` | ✅ OpenRouter-судья (structured outputs, retry, кэш), fuzzy-судья по правилам SIGame, композит |
-| `internal/config`, `internal/lan`, `internal/clock` | ✅ |
-| `internal/ws` | частично: kernel-RTT (TCP_INFO), envelope-кодек, rate limiter; соединение/hub — после buzzer |
-| `internal/buzzer` | 🔄 агент пишет (AnchoredHybrid + симулятор) |
-| `internal/engine` | 🔄 агент пишет (все типы вопросов, финал, апелляции) |
-| `internal/httpapi` | 🔄 агент пишет (packs/media/import/export/ai/system; комнаты — после room) |
-| `internal/room`, `cmd/sigame`, интеграционный тест, README | ⏳ после buzzer/engine |
+| `internal/engine` | ✅ чистый движок: все типы вопросов, финал, апелляции, таймеры, проекции по ролям (40 сценариев) |
+| `internal/buzzer` | ✅ AnchoredHybrid + симулятор (≥ 99.6% побед быстрой реакции при разбросе ≥ 20 мс; адверсары ограничены) |
+| `internal/room` + `internal/ws` | ✅ актор комнаты, сессии/resume, интеграция движка и кнопки, ИИ/гибридный ведущий, WebSocket с якорями RTT |
+| `internal/httpapi` | ✅ 43 операции OpenAPI 3.1 (паки, медиа, .siq, комнаты, пресеты кнопки, ИИ, система), Scalar на `/docs` |
+| `cmd/sigame` | ✅ сборка сервера, баннер LAN, graceful shutdown; дымовой тест REST пройден |
+| Сквозной тест (REST → WS → вопрос) | 🔄 агент пишет `cmd/sigame/e2e_test.go` |
 
-Документация: `docs/ops.md`, `docs/packs.md`, `docs/ai-showman.md`, `docs/adr/*`; `docs/buzzer.md` и `docs/protocol*.md` появятся вместе с пакетами.
+Документация: `README.md`, `docs/api.md`, `docs/protocol.md`, `docs/protocol-engine.md`, `docs/buzzer.md`, `docs/packs.md`,
+`docs/ai-showman.md`, `docs/ops.md`, `docs/adr/*`.
+
+Следующие шаги: сквозной тест → код-ревью (безопасность/протокол/корректность) → `docs/openapi.json` → финальный отчёт.

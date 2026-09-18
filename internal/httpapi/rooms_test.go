@@ -258,7 +258,7 @@ func TestRoomsCreateWithAIShowman(t *testing.T) {
 	judge := ai.JudgeFunc(func(_ context.Context, _ ai.Request) (ai.Verdict, error) {
 		return ai.Verdict{Right: true, Factor: 1, Source: ai.SourceAI}, nil
 	})
-	e := newRoomEnv(t, withDeps(func(d *Deps) { d.AI = judge }))
+	e := newRoomEnv(t, withDeps(func(d *Deps) { d.AI = judge; d.Cfg.OpenRouterAPIKey = "test-key" }))
 	pack := e.createPack(t, samplePack("Quiz"))
 
 	created := e.createRoom(t, map[string]any{"packId": pack.ID, "showman": "ai"})

@@ -67,7 +67,7 @@ func TestAIWithFakeJudge(t *testing.T) {
 		seen = req
 		return ai.Verdict{Right: true, Factor: 1, Source: ai.SourceAI, Reason: "ok"}, nil
 	})
-	e := newTestEnv(t, withDeps(func(d *Deps) { d.AI = judge }))
+	e := newTestEnv(t, withDeps(func(d *Deps) { d.AI = judge; d.Cfg.OpenRouterAPIKey = "test-key" }))
 
 	rec := e.do(t, http.MethodGet, "/api/v1/ai/status", nil)
 	require.Equal(t, http.StatusOK, rec.Code)

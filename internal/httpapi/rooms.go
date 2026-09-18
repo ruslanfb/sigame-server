@@ -209,10 +209,11 @@ func requireHostToken(token string) error {
 	return nil
 }
 
-// aiConfigured mirrors GET /system/info: a judge is wired directly or the
-// status provider reports a configured key.
+// aiConfigured reports whether a real AI judge is available: an OpenRouter
+// key in the configuration or a status provider that reports one. Deps.AI
+// alone is not a signal — the server always wires a fuzzy-only judge.
 func (s *Server) aiConfigured(ctx context.Context) bool {
-	if s.deps.AI != nil {
+	if s.deps.Cfg != nil && s.deps.Cfg.AIConfigured() {
 		return true
 	}
 	return s.deps.AIStatus != nil && s.deps.AIStatus.Status(ctx).Configured

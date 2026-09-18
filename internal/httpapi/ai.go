@@ -94,7 +94,7 @@ func (s *Server) getAIStatus(ctx context.Context, _ *struct{}) (*aiStatusOutput,
 		return &aiStatusOutput{Body: s.deps.AIStatus.Status(ctx)}, nil
 	}
 	return &aiStatusOutput{Body: ai.StatusInfo{
-		Configured: s.deps.AI != nil,
+		Configured: s.deps.Cfg.AIConfigured(),
 		Model:      s.deps.Cfg.OpenRouterModel,
 		BaseURL:    s.deps.Cfg.OpenRouterBaseURL,
 	}}, nil
@@ -126,7 +126,7 @@ func (s *Server) testAI(ctx context.Context, in *aiTestInput) (*aiTestOutput, er
 	switch {
 	case s.deps.AIStatus != nil:
 		v, err = s.deps.AIStatus.Test(ctx, req)
-	case s.deps.AI != nil:
+	case s.deps.AI != nil && s.aiConfigured(ctx):
 		if len(req.Right) == 0 {
 			req = ai.SampleRequest
 		}

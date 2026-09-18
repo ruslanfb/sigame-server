@@ -118,7 +118,7 @@ func (s *Server) getSystemInfo(_ context.Context, _ *struct{}) (*infoOutput, err
 		LanAddresses: addrs,
 		JoinURLs:     urls,
 		FFProbe:      s.deps.FFProbe,
-		AIConfigured: s.deps.AI != nil || s.deps.AIStatus != nil && s.deps.AIStatus.Status(context.Background()).Configured,
+		AIConfigured: s.aiConfigured(context.Background()),
 		Limits: Limits{
 			MaxImageMB: cfg.MaxImageMB,
 			MaxAudioMB: cfg.MaxAudioMB,
