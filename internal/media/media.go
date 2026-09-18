@@ -61,8 +61,8 @@ type Store interface {
 	Stat(ctx context.Context, id string) (Meta, error)
 	// Delete removes an object; ErrInUse if RefCount > 0.
 	Delete(ctx context.Context, id string) error
-	// AddRefs / RemoveRefs adjust reference counts for the given media IDs
-	// (called by the pack repository inside its own transaction boundary).
-	AddRefs(ctx context.Context, ids []string) error
-	RemoveRefs(ctx context.Context, ids []string) error
 }
+
+// Reference counts (Meta.RefCount) are maintained by the pack repository in
+// its own SQL transaction via the pack_media table; the media store only reads
+// them (Stat/Delete/GC).
