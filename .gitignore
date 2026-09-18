@@ -1,0 +1,23 @@
+# build
+/bin/
+/dist/
+/sigame
+/sigame.exe
+*.test
+*.out
+coverage.*
+# data
+/data/
+*.db
+*.db-wal
+*.db-shm
+# env
+.env
+.env.*
+config.local.yaml
+# os / editors
+.DS_Store
+.idea/
+.vscode/
+# go
+/vendor/

@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Wheels Rider</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #1a1a2e;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    color: #fff;
+    height: 100%;
+  }
+  #game {
+    display: block;
+    background: linear-gradient(to bottom, #87CEEB 0%, #B0E0E6 60%, #F4E4C1 100%);
+    cursor: crosshair;
+  }
+  #hud {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: rgba(0, 0, 0, 0.55);
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 14px;
+    line-height: 1.5;
+    pointer-events: none;
+    user-select: none;
+  }
+  #hud b { color: #ffd166; }
+  #status {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.75);
+    padding: 24px 40px;
+    border-radius: 12px;
+    font-size: 28px;
+    text-align: center;
+    display: none;
+  }
+  #status small {
+    display: block;
+    font-size: 14px;
+    margin-top: 8px;
+    opacity: 0.8;
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud">
+  <div>← → — газ / тормоз</div>
+  <div>↑ — прыжок · ↓ — наклон</div>
+  <div>R — рестарт</div>
+  <div style="margin-top:6px">Дистанция: <b id="dist">0</b> м</div>
+</div>
+<div id="status"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"></script>
+<script>
+const {
+  Engine, World, Bodies, Body, Composite, Composites, Constraint, Events, Vector
+} = Matter;
+
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const hudDist = document.getElementById('dist');
+const statusEl = document.getElementById('status');
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ---- Physics engine ----
+const engine = Engine.create();
+engine.gravity.y = 1.2;
+const world = engine.world;
+
+// ---- Level generation ----
+const LEVEL_END = 6000;
+const groundSegments = [];
+
+function buildTerrain() {
+  // Rolling hills using segmented rectangles for a Happy-Wheels-ish feel.
+  const segW = 60;
+  let x = -200;
+  let prevY = 500;
+  while (x < LEVEL_END + 400) {
+    // deterministic pseudo-random height using sin combos
+    const t = x * 0.006;
+    let y = 500
+      + Math.sin(t) * 40
+      + Math.sin(t * 2.3 + 1.1) * 25
+      + Math.sin(t * 0.6) * 60;
+
+    // occasional flat sections
+    const flatZone = Math.floor(x / 900) % 3 === 0;
+    if (flatZone) y = 520;
+
+    // ramps
+    if (x > 1400 && x < 1600) y = 520 - (x - 1400) * 0.6;
+    if (x > 2800 && x < 2900) y = 500 - (x - 2800) * 1.2;
+
+    const seg = Bodies.rectangle(x + segW / 2, y + 200, segW + 2, 400, {
+      isStatic: true,
+      friction: 0.9,
+      render: { fillStyle: '#3a5a40' }
+    });
+    // slight tilt to smooth transitions
+    const angle = Math.atan2(y - prevY, segW);
+    Body.setAngle(seg, angle);
+    seg.topY = y;
+    groundSegments.push(seg);
+    World.add(world, seg);
+
+    prevY = y;
+    x += segW;
+  }
+}
+buildTerrain();
+
+// ---- Obstacles ----
+const obstacles = [];
+function addBox(x, y, w, h, opts = {}) {
+  const b = Bodies.rectangle(x, y, w, h, {
+    friction: 0.6,
+    restitution: 0.1,
+    density: opts.density ?? 0.002,
+    isStatic: opts.static ?? false,
+    render: { fillStyle: opts.color ?? '#8B4513' }
+  });
+  obstacles.push(b);
+  World.add(world, b);
+  return b;
+}
+
+// crates
+for (let i = 0; i < 6; i++) {
+  addBox(700 + i * 42, 400 - (i % 3) * 40, 40, 40, { color: '#a0522d' });
+}
+addBox(1200, 420, 60, 60, { color: '#8B4513' });
+addBox(1260, 420, 60, 60, { color: '#8B4513' });
+
+// spike trap (static)
+function addSpikes(x, y, count) {
+  for (let i = 0; i < count; i++) {
+    const spike = Bodies.fromVertices(x + i * 20, y, [[
+      { x: -10, y: 15 }, { x: 10, y: 15 }, { x: 0, y: -15 }
+    ]], {
+      isStatic: true,
+      isSpike: true,
+      render: { fillStyle: '#555' }
+    });
+    if (spike) {
+      spike.isSpike = true;
+      obstacles.push(spike);
+      World.add(world, spike);
+    }
+  }
+}
+addSpikes(2000, 510, 8);
+addSpikes(3400, 505, 10);
+addSpikes(4600, 505, 6);
+
+// pendulum log
+{
+  const pivot = { x: 2500, y: 200 };
+  const log = Bodies.rectangle(pivot.x, pivot.y + 200, 30, 200, {
+    density: 0.01,
+    render: { fillStyle: '#5C4033' }
+  });
+  const rope = Constraint.create({
+    pointA: pivot,
+    bodyB: log,
+    pointB: { x: 0, y: -100 },
+    length: 10,
+    stiffness: 0.9
+  });
+  World.add(world, [log, rope]);
+  obstacles.push(log);
+}
+
+// stacked barrels
+for (let i = 0; i < 5; i++) {
+  const barrel = Bodies.circle(4000, 440 - i * 45, 22, {
+    density: 0.003,
+    friction: 0.5,
+    render: { fillStyle: '#c17817' }
+  });
+  obstacles.push(barrel);
+  World.add(world, barrel);
+}
+
+// finish flag (static, sensor-like)
+const finish = Bodies.rectangle(LEVEL_END - 20, 460, 10, 120, {
+  isStatic: true,
+  isSensor: true,
+  isFinish: true,
+  render: { fillStyle: '#ffd166' }
+});
+World.add(world, finish);
+
+// ---- Vehicle (bike-like) ----
+let vehicle;
+function buildVehicle(x, y) {
+  const group = Body.nextGroup(true);
+  const wheelRadius = 22;
+  const wheelOptions = {
+    collisionFilter: { group },
+    friction: 1.5,
+    density: 0.006,
+    restitution: 0.05,
+    render: { fillStyle: '#222' }
+  };
+
+  const chassis = Bodies.rectangle(x, y, 90, 18, {
+    collisionFilter: { group },
+    density: 0.004,
+    friction: 0.4,
+    render: { fillStyle: '#e63946' }
+  });
+
+  const wheelA = Bodies.circle(x - 34, y + 18, wheelRadius, wheelOptions);
+  const wheelB = Bodies.circle(x + 34, y + 18, wheelRadius, wheelOptions);
+
+  // Rider (head + torso), attached to chassis via constraints — ragdoll-ish
+  const torso = Bodies.rectangle(x, y - 28, 14, 32, {
+    collisionFilter: { group },
+    density: 0.002,
+    render: { fillStyle: '#457b9d' }
+  });
+  const head = Bodies.circle(x, y - 54, 11, {
+    collisionFilter: { group },
+    density: 0.002,
+    render: { fillStyle: '#f1c27d' }
+  });
+
+  const axleA = Constraint.create({
+    bodyA: chassis, pointA: { x: -34, y: 9 },
+    bodyB: wheelA, stiffness: 1, length: 0
+  });
+  const axleB = Constraint.create({
+    bodyA: chassis, pointA: { x: 34, y: 9 },
+    bodyB: wheelB, stiffness: 1, length: 0
+  });
+  const spine = Constraint.create({
+    bodyA: chassis, pointA: { x: 0, y: -4 },
+    bodyB: torso, pointB: { x: 0, y: 14 },
+    stiffness: 0.9, length: 4
+  });
+  const neck = Constraint.create({
+    bodyA: torso, pointA: { x: 0, y: -14 },
+    bodyB: head, pointB: { x: 0, y: 6 },
+    stiffness: 0.9, length: 2
+  });
+
+  World.add(world, [chassis, wheelA, wheelB, torso, head, axleA, axleB, spine, neck]);
+
+  return {
+    chassis, wheelA, wheelB, torso, head,
+    axleA, axleB, spine, neck,
+    alive: true, finished: false,
+    startX: x, startY: y
+  };
+}
+
+function destroyVehicle(v) {
+  World.remove(world, [v.chassis, v.wheelA, v.wheelB, v.torso, v.head,
+    v.axleA, v.axleB, v.spine, v.neck]);
+}
+
+function respawn() {
+  if (vehicle) destroyVehicle(vehicle);
+  vehicle = buildVehicle(120, 400);
+  statusEl.style.display = 'none';
+}
+respawn();
+
+// ---- Controls ----
+const keys = {};
+window.addEventListener('keydown', e => {
+  keys[e.key] = true;
+  if (e.key === 'r' || e.key === 'R') respawn();
+  if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key)) e.preventDefault();
+});
+window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+// ---- Game loop ----
+let camera = { x: 0, y: 0 };
+let lastTime = performance.now();
+
+function endGame(msg, ok) {
+  vehicle.alive = false;
+  statusEl.innerHTML = msg + '<small>Нажмите R чтобы начать заново</small>';
+  statusEl.style.background = ok ? 'rgba(30,120,60,0.85)' : 'rgba(120,20,20,0.85)';
+  statusEl.style.display = 'block';
+}
+
+// Death / finish detection
+Events.on(engine, 'collisionStart', evt => {
+  if (!vehicle || !vehicle.alive) return;
+  for (const pair of evt.pairs) {
+    const bodies = [pair.bodyA, pair.bodyB];
+    const hitSpike = bodies.some(b => b.isSpike);
+    const hitFinish = bodies.some(b => b.isFinish);
+    const hitHead = bodies.includes(vehicle.head);
+    if (hitSpike && (bodies.includes(vehicle.head) || bodies.includes(vehicle.torso))) {
+      endGame('💀 Вы напоролись на шипы!', false);
+    }
+    if (hitHead && bodies.some(b => b.isStatic) && vehicle.chassis.velocity.y < -0.5) {
+      // hard head impact into ground
+      const relSpeed = Vector.magnitude(vehicle.head.velocity);
+      if (relSpeed > 8) endGame('🤕 Шею свернули!', false);
+    }
+    if (hitFinish && bodies.includes(vehicle.chassis)) {
+      vehicle.finished = true;
+      endGame('🏁 Финиш!', true);
+    }
+  }
+});
+
+function step(now) {
+  const dt = Math.min(32, now - lastTime);
+  lastTime = now;
+
+  // controls
+  if (vehicle && vehicle.alive) {
+    const torqueMag = 0.06;
+    if (keys['ArrowRight']) {
+      Body.setAngularVelocity(vehicle.wheelA, Math.min(vehicle.wheelA.angularVelocity + 0.04, 0.5));
+      Body.setAngularVelocity(vehicle.wheelB, Math.min(vehicle.wheelB.angularVelocity + 0.04, 0.5));
+    }
+    if (keys['ArrowLeft']) {
+      Body.setAngularVelocity(vehicle.wheelA, Math.max(vehicle.wheelA.angularVelocity - 0.04, -0.5));
+      Body.setAngularVelocity(vehicle.wheelB, Math.max(vehicle.wheelB.angularVelocity - 0.04, -0.5));
+    }
+    if (keys['ArrowUp']) {
+      // apply upward impulse if roughly grounded
+      const vy = vehicle.chassis.velocity.y;
+      if (Math.abs(vy) < 2.5) {
+        Body.applyForce(vehicle.chassis, vehicle.chassis.position, { x: 0, y: -0.12 });
+      }
+      // also lean back
+      Body.setAngularVelocity(vehicle.chassis, vehicle.chassis.angularVelocity - 0.02);
+    }
+    if (keys['ArrowDown']) {
+      Body.setAngularVelocity(vehicle.chassis, vehicle.chassis.angularVelocity + 0.02);
+    }
+
+    // fall out of the world
+    if (vehicle.chassis.position.y > 1200) {
+      endGame('🌊 Улетели в пропасть!', false);
+    }
+  }
+
+  Engine.update(engine, dt);
+
+  // camera follows chassis
+  if (vehicle) {
+    const targetX = vehicle.chassis.position.x - canvas.width * 0.35;
+    const targetY = vehicle.chassis.position.y - canvas.height * 0.55;
+    camera.x += (targetX - camera.x) * 0.1;
+    camera.y += (targetY - camera.y) * 0.08;
+
+    const distM = Math.max(0, Math.floor((vehicle.chassis.position.x - 120) / 20));
+    hudDist.textContent = distM;
+  }
+
+  render();
+  requestAnimationFrame(step);
+}
+
+// ---- Rendering ----
+function render() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // sky already via CSS; draw parallax mountains
+  ctx.save();
+  const px = -camera.x * 0.3;
+  ctx.fillStyle = '#6a8b6d';
+  for (let i = 0; i < 12; i++) {
+    const bx = i * 400 + px;
+    ctx.beginPath();
+    ctx.moveTo(bx, canvas.height * 0.7);
+    ctx.lineTo(bx + 200, canvas.height * 0.4);
+    ctx.lineTo(bx + 400, canvas.height * 0.7);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+
+  ctx.save();
+  ctx.translate(-camera.x, -camera.y);
+
+  // ground fill under segments (nice green)
+  ctx.beginPath();
+  ctx.moveTo(groundSegments[0].position.x - 60, canvas.height + camera.y + 400);
+  for (const seg of groundSegments) {
+    ctx.lineTo(seg.position.x, seg.topY);
+  }
+  ctx.lineTo(groundSegments[groundSegments.length - 1].position.x, canvas.height + camera.y + 400);
+  ctx.closePath();
+  ctx.fillStyle = '#3a5a40';
+  ctx.fill();
+  ctx.strokeStyle = '#2b3d2f';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // obstacles
+  for (const b of obstacles) drawBody(b);
+
+  // finish
+  drawFinish(finish);
+
+  // vehicle
+  if (vehicle) {
+    drawWheel(vehicle.wheelA);
+    drawWheel(vehicle.wheelB);
+    drawBody(vehicle.chassis);
+    drawBody(vehicle.torso);
+    drawHead(vehicle.head);
+  }
+
+  ctx.restore();
+}
+
+function drawBody(body) {
+  const v = body.vertices;
+  ctx.beginPath();
+  ctx.moveTo(v[0].x, v[0].y);
+  for (let i = 1; i < v.length; i++) ctx.lineTo(v[i].x, v[i].y);
+  ctx.closePath();
+  ctx.fillStyle = body.render.fillStyle || '#888';
+  ctx.fill();
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+  ctx.stroke();
+}
+
+function drawWheel(wheel) {
+  const { x, y } = wheel.position;
+  const r = wheel.circleRadius;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = '#222';
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#000';
+  ctx.stroke();
+  // spokes
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(wheel.angle);
+  ctx.strokeStyle = '#ffd166';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 4; i++) {
+    ctx.beginPath();
+    ctx.moveTo(-r + 3, 0);
+    ctx.lineTo(r - 3, 0);
+    ctx.stroke();
+    ctx.rotate(Math.PI / 4);
+  }
+  ctx.restore();
+}
+
+function drawHead(head) {
+  const { x, y } = head.position;
+  ctx.beginPath();
+  ctx.arc(x, y, head.circleRadius, 0, Math.PI * 2);
+  ctx.fillStyle = '#f1c27d';
+  ctx.fill();
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  // eye
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(head.angle);
+  ctx.fillStyle = '#000';
+  ctx.beginPath();
+  ctx.arc(4, -2, 1.6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawFinish(f) {
+  const { x, y } = f.position;
+  ctx.fillStyle = '#ffd166';
+  ctx.fillRect(x - 3, y - 60, 6, 120);
+  // checker flag
+  const size = 8;
+  for (let ry = 0; ry < 6; ry++) {
+    for (let rx = 0; rx < 5; rx++) {
+      ctx.fillStyle = ((rx + ry) % 2 === 0) ? '#000' : '#fff';
+      ctx.fillRect(x + 3 + rx * size, y - 60 + ry * size, size, size);
+    }
+  }
+}
+
+requestAnimationFrame(step);
+</script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<!--Набор типов вопросов-->
+<ygre:types xmlns:ygre="http://vladimirkhil.com/content/docs/QuestionsTypes.xsd">
+    <ygre:type name="simple">
+        <ygre:title>Обычный вопрос</ygre:title>
+        <ygre:description>Этот вопрос задаётся, затем у всех игроков есть время, чтобы подумать и нажать на кнопку. Нажавший раньше остальных отвечает. В случае верного ответа стоимость вопроса прибавляется к счёту игрока, в случае неверного - стоимость вопроса снимается со счёта игрока. В случае неверного ответа кнопку снова могут жать не отвечавшие игроки.</ygre:description>
+        <ygre:params />
+    </ygre:type>
+    <ygre:type name="auction">
+        <ygre:title>Вопрос со ставкой</ygre:title>
+        <ygre:description>При розыгрыше этого вопроса игроки последовательно, в порядке возрастания сумм (но начиная с того, кому вопрос достался) делают ставки, перекрывая ставки оппонентов. Минимальная ставка равна номинальной стоимости вопроса. Можно сказать "Пас" и выйти из торгов. Можно пойти ва-банк - поставить всё на кон. Ва-банк перекрывает все простые ставки, но пойти ва-банк можно только перекрывая по сумме предыдущую ставку. Тот, кто поставит больше остальных, и будет единилично играть этот вопрос. Он будет обязан отвечать. Стоимость вопроса равна стоимости ставки играющего.</ygre:description>
+        <ygre:params />
+    </ygre:type>
+    <ygre:type name="cat">
+        <ygre:title>Вопрос с секретом</ygre:title>
+        <ygre:description>Тот, кому достался вопрос, обязан передать его другом игроку, и последний обязан ответить на полученный вопрос. Кот имеет собственную тему и стоимость, неизвестную до отдачи.</ygre:description>
+        <ygre:params>
+            <ygre:param name="theme">
+                <ygre:title>Тема</ygre:title>
+                <ygre:description>Тема вопроса</ygre:description>
+            </ygre:param>
+            <ygre:param name="cost">
+                <ygre:title>Стоимость</ygre:title>
+                <ygre:description>Реальная стоимость вопроса</ygre:description>
+            </ygre:param>
+        </ygre:params>
+    </ygre:type>
+    <ygre:type name="bagcat">
+        <ygre:title>Обобщённый Вопрос с секретом</ygre:title>
+        <ygre:description>На этот вопрос отвечает 1 человек. Отвечающего назначает открывший вопрос игрок. У вопроса имеется собственная тема и стоимость</ygre:description>
+        <ygre:params>
+            <ygre:param name="theme">
+                <ygre:title>Тема</ygre:title>
+                <ygre:description>Тема вопроса</ygre:description>
+            </ygre:param>
+            <ygre:param name="cost">
+                <ygre:title>Стоимость</ygre:title>
+                <ygre:description>
+                    Реальная стоимость вопроса
+                    <ul>
+                        <li>
+                            <b>Число > 0</b> - фиксированная сумма.
+                        </li>
+                        <li>
+                            <b>
+                                0
+                            </b> - на выбор из минимума или максимума вопросов в раунде. Эти величины вычисляются просмотром стоимостей всех вопросов раунда.
+                        </li>
+                        <li>
+                            Три числа в формате <b>[a;b]/h</b> - означают, что игрок может выбрать стоимость вопроса из интервала [a;b] с шагом в h. Если третье число опущено, то можно выбирать только крайние значения.
+                        </li>
+                    </ul>
+                </ygre:description>
+            </ygre:param>
+            <ygre:param name="self">
+                <ygre:title>Можно ли отдать вопрос себе?</ygre:title>
+                <ygre:description>
+                    Принимает значения <b>
+                        true
+                    </b> (можно) или <b>false</b> (нельзя)
+                </ygre:description>
+            </ygre:param>
+            <ygre:param name="knows">
+                <ygre:title>Когда узнаётся тема и стоимость вопроса?</ygre:title>
+                <ygre:description>
+                    Принимает значения <b>
+                        before
+                    </b> (до передачи), <b>after</b> (после), <b>never</b> (никогда, вопрос не задаётся, игроку просто перечисляется стоимость Кота)
+                </ygre:description>
+            </ygre:param>
+        </ygre:params>
+    </ygre:type>
+    <ygre:type name="sponsored">
+        <ygre:title>Вопрос без риска</ygre:title>
+        <ygre:description>На этот вопрос отвечает только игрок, открывший его. В случае правильного ответа он зарабатывает сумму, равную удвоенному номиналу вопроса. В случае неверного ответа он ничего не теряет.</ygre:description>
+        <ygre:params />
+    </ygre:type>
+</ygre:types>
