@@ -387,6 +387,15 @@ type AIVerdictPayload struct {
 	Applied   bool    `json:"applied" doc:"true when the verdict was applied immediately; false = suggestion for the human showman"`
 }
 
+// AIVerdictPublic is what players and viewers receive: no verdict, no reason —
+// only that an automatic judgement was applied (the VALIDATION event carries
+// the outcome once it is public).
+type AIVerdictPublic struct {
+	PersonID string `json:"personId"`
+	Source   string `json:"source" doc:"ai | fuzzy | fallback | exact | ..."`
+	Applied  bool   `json:"applied"`
+}
+
 func auditView(entries []buzzer.AuditEntry) []AuditEntry {
 	out := make([]AuditEntry, 0, len(entries))
 	for _, e := range entries {

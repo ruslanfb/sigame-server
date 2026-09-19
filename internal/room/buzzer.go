@@ -234,7 +234,7 @@ func (r *Room) onPress(p *person, in PressIn, tRecv float64) {
 		if st == nil && r.pressIsMisfire() {
 			until := r.roomLockout(p, tRecv)
 			ack.PressAck = buzzer.PressAck{Status: buzzer.StatusFalseStart, Reason: "misfire", LockoutUntil: until}
-			r.broadcast(MsgLockout, LockoutPayload{PlayerID: p.ID, UntilAt: until, DurationMs: int64(until - tRecv), Reason: "misfire"})
+			r.announceLockout(p, until, tRecv, "misfire")
 		}
 		r.send(p, MsgPressAck, ack)
 		return
@@ -296,7 +296,17 @@ func (r *Room) onMisfire(p *person, mf MisfireIn, now float64) {
 	if until <= 0 {
 		until = r.roomLockout(p, now)
 	}
-	r.broadcast(MsgLockout, LockoutPayload{PlayerID: p.ID, UntilAt: until, DurationMs: int64(until - now), Reason: "misfire"})
+	r.announceLockout(p, until, now, "misfire")
+}
+
+// announceLockout broadcasts a LOCKOUT only when it extends the one already
+// announced, so a client spamming MISFIRE cannot amplify traffic to the room.
+func (r *Room) announceLockout(p *person, until, now float64, reason string) {
+	if until <= p.lockoutSent+1 {
+		return
+	}
+	p.lockoutSent = until
+	r.broadcast(MsgLockout, LockoutPayload{PlayerID: p.ID, UntilAt: until, DurationMs: int64(until - now), Reason: reason})
 }
 
 // reopenButton (host) replaces the open arm with a fresh one.

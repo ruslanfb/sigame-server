@@ -161,7 +161,7 @@ func (r *Room) onAIVerdict(ask engine.AskValidatePayload, v ai.Verdict) {
 	human := r.humanShowman()
 	if r.showman == ShowmanHybrid && human != nil {
 		r.submit(engine.Command{Type: engine.CmdAISuggestion, Actor: systemActor, PersonID: ask.PersonID, Right: right, Factor: factor, Reason: v.Reason})
-		r.broadcastRaw(MsgAIVerdict, marshal(AIVerdictPayload{PersonID: ask.PersonID, Right: right, Factor: factor, Uncertain: v.Uncertain, Reason: v.Reason, Source: v.Source, Applied: false}), isStaff)
+		r.announceVerdict(ask.PersonID, right, factor, v, false, ask.Preview)
 		if ask.Preview {
 			return
 		}
@@ -176,7 +176,21 @@ func (r *Room) onAIVerdict(ask engine.AskValidatePayload, v ai.Verdict) {
 		return
 	}
 	r.submit(r.validateCmd(ask.PersonID, right, factor, "ai"))
-	r.broadcast(MsgAIVerdict, AIVerdictPayload{PersonID: ask.PersonID, Right: right, Factor: factor, Uncertain: v.Uncertain, Reason: v.Reason, Source: v.Source, Applied: true})
+	r.announceVerdict(ask.PersonID, right, factor, v, true, ask.Preview)
+}
+
+// announceVerdict tells the showman everything (verdict, factor, reason —
+// the reason may quote the accepted answers) and everyone else only that an
+// automatic judgement was applied. Nothing about a hidden (preview) answer
+// leaves the showman audience before the reveal.
+func (r *Room) announceVerdict(personID string, right bool, factor float64, v ai.Verdict, applied, preview bool) {
+	full := marshal(AIVerdictPayload{PersonID: personID, Right: right, Factor: factor, Uncertain: v.Uncertain, Reason: v.Reason, Source: v.Source, Applied: applied})
+	r.broadcastRaw(MsgAIVerdict, full, isShowmanRole)
+	if !applied || preview {
+		return
+	}
+	pub := marshal(AIVerdictPublic{PersonID: personID, Source: v.Source, Applied: true})
+	r.broadcastRaw(MsgAIVerdict, pub, func(p *person) bool { return !isShowmanRole(p) })
 }
 
 func (r *Room) validationKey(personID, answer string) string {
@@ -198,7 +212,7 @@ func (r *Room) applyHybrid(key string, ask engine.AskValidatePayload, right bool
 		return
 	}
 	r.submit(r.validateCmd(ask.PersonID, right, factor, "ai"))
-	r.broadcast(MsgAIVerdict, AIVerdictPayload{PersonID: ask.PersonID, Right: right, Factor: factor, Uncertain: v.Uncertain, Reason: v.Reason, Source: v.Source, Applied: true})
+	r.announceVerdict(ask.PersonID, right, factor, v, true, false)
 }
 
 func (r *Room) cancelHybrid() {
@@ -219,5 +233,5 @@ func (r *Room) onValidationTimeout(p engine.ValidationTimeoutPayload) {
 	}
 	right, factor := r.normaliseVerdict(v)
 	r.enqueue(r.validateCmd(p.PersonID, right, factor, "auto"))
-	r.broadcast(MsgAIVerdict, AIVerdictPayload{PersonID: p.PersonID, Right: right, Factor: factor, Uncertain: v.Uncertain, Reason: v.Reason, Source: v.Source, Applied: true})
+	r.announceVerdict(p.PersonID, right, factor, v, true, false)
 }

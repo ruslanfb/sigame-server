@@ -405,7 +405,7 @@ func (m *Manager) hostCall(code, hostToken string, fn func(r *Room) error) error
 	if err != nil {
 		return err
 	}
-	if hashToken(hostToken) != r.hostHash {
+	if !tokenEqual(hashToken(hostToken), r.hostHash) {
 		return ErrInvalidHostToken
 	}
 	return r.call(context.Background(), func() error { return fn(r) })
@@ -463,7 +463,7 @@ func (m *Manager) Close(code, hostToken string) error {
 	if err != nil {
 		return err
 	}
-	if hashToken(hostToken) != r.hostHash {
+	if !tokenEqual(hashToken(hostToken), r.hostHash) {
 		return ErrInvalidHostToken
 	}
 	if !r.post(func() { r.closeRoom("host") }) {

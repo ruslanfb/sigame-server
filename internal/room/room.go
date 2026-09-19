@@ -2,11 +2,13 @@ package room
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"math/rand/v2"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -116,11 +118,23 @@ func (r *Room) run() {
 	for {
 		select {
 		case fn := <-r.mailbox:
-			fn()
+			r.runGuarded(fn)
 		case <-r.done:
 			return
 		}
 	}
+}
+
+// runGuarded executes one mailbox function; a panic closes this room only
+// instead of taking the whole process (and every other room) down.
+func (r *Room) runGuarded(fn func()) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			r.log.Error("room actor panic", "room", r.code, "panic", rec, "stack", string(debug.Stack()))
+			r.closeRoom("internalError")
+		}
+	}()
+	fn()
 }
 
 // post enqueues fn for the actor; it reports false when the room is closed.
@@ -305,7 +319,7 @@ func (r *Room) join(jp JoinParams, hostToken string) (Session, error) {
 	}
 	isHostToken := false
 	if hostToken != "" {
-		if hashToken(hostToken) != r.hostHash {
+		if !tokenEqual(hashToken(hostToken), r.hostHash) {
 			return Session{}, ErrInvalidHostToken
 		}
 		isHostToken = true
@@ -313,7 +327,7 @@ func (r *Room) join(jp JoinParams, hostToken string) (Session, error) {
 	if r.bannedNames[strings.ToLower(name)] {
 		return Session{}, ErrBanned
 	}
-	if r.password != "" && !isHostToken && jp.Password != r.password {
+	if r.password != "" && !isHostToken && subtle.ConstantTimeCompare([]byte(jp.Password), []byte(r.password)) != 1 {
 		return Session{}, ErrBadPassword
 	}
 
@@ -328,6 +342,12 @@ func (r *Room) join(jp JoinParams, hostToken string) (Session, error) {
 		}
 		if _, banned := r.bannedIDs[p.ID]; banned {
 			return Session{}, ErrBanned
+		}
+		// A showman seat or host rights can only be reclaimed with the host
+		// token; a disconnected player seat may be reclaimed by name (the live
+		// session token still works for a plain reconnect).
+		if (p.Role == engine.RoleShowman || p.IsHost) && !isHostToken {
+			return Session{}, ErrNameTaken
 		}
 		tok := newToken()
 		p.tokenHash = hashToken(tok)
@@ -626,6 +646,10 @@ func (r *Room) sendError(p *person, code, msg string, ref int64) {
 // isStaff reports whether p sees showman-level detail (showman or host).
 func isStaff(p *person) bool { return p.Role == engine.RoleShowman || p.IsHost }
 
+// isShowmanRole is the audience for verdict details: the showman seat only,
+// never a host who plays.
+func isShowmanRole(p *person) bool { return p.Role == engine.RoleShowman }
+
 func (r *Room) sendWelcome(p *person) {
 	r.send(p, MsgWelcome, WelcomePayload{PersonID: p.ID, Name: p.Name, Role: p.Role, IsHost: p.IsHost, RoomCode: r.code,
 		Showman: r.showman, ServerTimeMs: r.mono(), ServerWallMs: r.wallMs(),
@@ -918,7 +942,9 @@ func (r *Room) handleInbound(p *person, gen int, in Inbound) {
 			return
 		}
 		out := p.bconn.OnSync(buzzer.SyncIn{Seq: s.Seq, C1: s.C1, PrevSeq: s.PrevSeq, PrevC4: s.PrevC4, HasPrev: s.PrevSeq > 0}, in.TRecv, now)
-		r.send(p, MsgSyncAck, SyncAckPayload{Seq: out.Seq, C1: out.C1, S2: out.S2, S3: out.S3, Model: out.Model})
+		model := out.Model
+		model.Flags = nil // anti-cheat flags are staff-only (CONN_QUALITY / BUTTON_AUDIT)
+		r.send(p, MsgSyncAck, SyncAckPayload{Seq: out.Seq, C1: out.C1, S2: out.S2, S3: out.S3, Model: model})
 	case InArmAck:
 		a, err := decode[ArmAckIn](in.P)
 		if err != nil {
@@ -1111,6 +1137,14 @@ func (r *Room) clientCommand(p *person, in Inbound) (cmd engine.Command, ok bool
 		cmd.Type = engine.CmdNext
 	default:
 		return cmd, false, nil
+	}
+	// A host who plays must not wield the showman's game controls while a
+	// human showman is seated (score edits, chooser, table toggles, moves).
+	if cmd.Actor.IsHost && p.Role != engine.RoleShowman && r.humanShowman() != nil {
+		switch cmd.Type {
+		case engine.CmdChangeScore, engine.CmdSetChooser, engine.CmdToggle, engine.CmdMove:
+			cmd.Actor.IsHost = false
+		}
 	}
 	return cmd, true, err
 }

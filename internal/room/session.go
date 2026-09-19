@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
 
@@ -83,6 +84,9 @@ func newToken() string {
 
 func hashToken(t string) [32]byte { return sha256.Sum256([]byte(t)) }
 
+// tokenEqual compares two token hashes in constant time.
+func tokenEqual(a, b [32]byte) bool { return subtle.ConstantTimeCompare(a[:], b[:]) == 1 }
+
 func newSeed() []byte {
 	b := make([]byte, 16)
 	if _, err := rand.Read(b); err != nil {
@@ -113,6 +117,7 @@ type person struct {
 	lastChatAt   float64
 	buttonsWon   int
 	lockedUntil  float64 // room-level misfire lockout (server ms)
+	lockoutSent  float64 // last LOCKOUT untilAt broadcast for this person (dedups misfire spam)
 }
 
 func (p *person) actor() engine.Actor {

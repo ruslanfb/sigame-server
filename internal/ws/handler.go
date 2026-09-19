@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"runtime/debug"
 	"time"
 
 	"github.com/coder/websocket"
@@ -108,6 +109,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // readLoop reads frames, stamps them, rate-limits and delivers them.
 func (h *Handler) readLoop(ctx context.Context, c *conn, att *room.Attachment, maxBytes int64, perSec int) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			h.logger().Error("ws reader panic", "panic", rec, "stack", string(debug.Stack()))
+			c.Close(int(websocket.StatusInternalError), "internal error")
+		}
+	}()
 	clk := h.clock()
 	limiter := NewLimiter(perSec, 2*perSec, clk.Mono())
 	strikes := 0
