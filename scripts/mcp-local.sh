@@ -12,7 +12,7 @@ CHROME_PROFILE="$HOME/.sigame-chrome-profile"
 PENPOT_MCP_VERSION="2.15.4"
 PENPOT_SRC="$DIR/src/penpot-mcp"
 
-port_open() { curl -s -m 3 -o /dev/null "http://127.0.0.1:$1/" 2>/dev/null; }
+port_open() { curl -s -m 3 -o /dev/null "http://localhost:$1/" 2>/dev/null; }  # localhost: the Penpot MCP binds ::1
 
 start() {
   if ! port_open 4401; then
@@ -57,7 +57,7 @@ stop() {
 }
 
 status() {
-  for p in 4400 4401 14181 9222; do printf "127.0.0.1:%-6s " "$p"; port_open "$p" && echo open || echo closed; done
+  for p in 4400 4401 14181 9222; do printf "localhost:%-6s " "$p"; port_open "$p" && echo open || echo closed; done
 }
 
 case "${1:-start}" in start) start ;; stop) stop ;; status) status ;; *) echo "usage: $0 [start|stop|status]"; exit 2 ;; esac
