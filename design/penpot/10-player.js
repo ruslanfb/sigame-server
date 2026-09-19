@@ -1,4 +1,4 @@
-// Player (mobile, 390×844) screens on page "Player". Requires storage helpers (02-helpers.js) and the page to be active.
+// Player (mobile, 390×844) screens on page "Screens", row y = 0. Requires storage helpers (02-helpers.js) and the page to be active.
 // Boards side by side: 01 Join · 02 Lobby · 03 Table (choose) · 04 Question + button · 05 Answer · 06 Stake · 07 Verdict.
 const T = storage.T;
 const page = penpot.currentPage;
