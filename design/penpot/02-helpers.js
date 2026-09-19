@@ -11,15 +11,14 @@ storage.fonts = fonts;
 storage.vgrad = (top, bottom, opacity = 1) => ({ fillOpacity: opacity, fillColorGradient: { type: 'linear', startX: 0.5, startY: 0, endX: 0.5, endY: 1, width: 1, stops: [{ color: top, opacity: 1, offset: 0 }, { color: bottom, opacity: 1, offset: 1 }] } });
 storage.radial = (inner, mid, outer) => ({ fillOpacity: 1, fillColorGradient: { type: 'radial', startX: 0.5, startY: 0, endX: 0.5, endY: 1, width: 1.2, stops: [{ color: inner, opacity: 1, offset: 0 }, { color: mid, opacity: 1, offset: 0.45 }, { color: outer, opacity: 1, offset: 1 }] } });
 storage.hexPath = (x, y, w, h) => {
+  // Path geometry via the SVG `d` string (PathCommand[] is also accepted, `content` is deprecated).
   const p = penpot.createPath(); const k = Math.min(h / 2, w * 0.06);
-  p.content = [
-    { command: 'moveto', params: { x: x + k, y } }, { command: 'lineto', params: { x: x + w - k, y } }, { command: 'lineto', params: { x: x + w, y: y + h / 2 } },
-    { command: 'lineto', params: { x: x + w - k, y: y + h } }, { command: 'lineto', params: { x: x + k, y: y + h } }, { command: 'lineto', params: { x, y: y + h / 2 } }, { command: 'closepath', params: {} },
-  ];
+  p.d = `M ${x + k} ${y} L ${x + w - k} ${y} L ${x + w} ${y + h / 2} L ${x + w - k} ${y + h} L ${x + k} ${y + h} L ${x} ${y + h / 2} Z`;
   return p;
 };
 storage.text = (str, x, y, opts = {}) => {
-  const t = penpot.createText(str); t.x = x; t.y = y;
+  if (str === undefined || str === null || String(str).length === 0) return null; // createText('') returns null
+  const t = penpot.createText(String(str)); t.x = x; t.y = y;
   if (opts.font === 'display' && fonts.oswald) fonts.oswald.applyToText(t, fonts.oswald.variants.find(v => v.fontWeight === String(opts.weight || 600)) || undefined);
   else if (fonts.manrope) fonts.manrope.applyToText(t, fonts.manrope.variants.find(v => v.fontWeight === String(opts.weight || 500)) || undefined);
   t.fontSize = String(opts.size || 16); t.fills = [{ fillColor: opts.color || T.text, fillOpacity: 1 }];
@@ -35,14 +34,18 @@ storage.hexPlate = (parent, x, y, w, h, opts = {}) => {
   if (variant === 'gold') p.shadows = [{ style: 'drop-shadow', offsetX: 0, offsetY: 0, blur: 24, spread: 0, color: { color: T.accent, opacity: 0.55 } }];
   if (variant === 'active') p.shadows = [{ style: 'drop-shadow', offsetX: 0, offsetY: 0, blur: 24, spread: 0, color: { color: T.primary, opacity: 0.55 } }];
   parent.appendChild(p);
-  if (opts.label !== undefined) {
+  if (opts.label !== undefined && String(opts.label).length > 0) {
     const t = storage.text(opts.label, x, y, { font: opts.font || 'display', size: opts.size || Math.round(h * 0.45), weight: opts.weight || 600, color: variant === 'gold' ? T.accentContrast : variant === 'dim' ? T.muted : T.text, align: 'center', upper: opts.upper, w, h });
-    t.name = 'label'; t.verticalAlign = 'center'; parent.appendChild(t);
+    if (t) { t.name = 'label'; t.verticalAlign = 'center'; parent.appendChild(t); }
   }
   return p;
 };
+storage.add = (parent, shape) => { if (shape) parent.appendChild(shape); return shape; };
 storage.bgBoard = (name, w, h, x = 0, y = 0) => {
   const b = penpot.createBoard(); b.name = name; b.x = x; b.y = y; b.resize(w, h);
   b.fills = [storage.radial('#1B2A6B', '#0B1233', '#05081A')]; b.clipContent = true; return b;
 };
+// Scripts position children in board-relative coordinates; boards themselves sit at an offset.
+// Call after building a board to convert every child's (x, y) into a position relative to the board.
+storage.fixBoard = (b) => { let n = 0; for (const c of [...b.children]) { if (!penpotUtils.isContainedIn(c, b)) { penpotUtils.setParentXY(c, c.x, c.y); n++; } } return n; };
 return { fonts: { oswald: !!fonts.oswald, manrope: !!fonts.manrope } };
