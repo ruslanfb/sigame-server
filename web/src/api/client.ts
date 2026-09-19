@@ -94,6 +94,25 @@ export async function listBuzzerPresets() {
   return unwrap(await api.GET('/api/v1/buzzer-presets'));
 }
 
+export type RoomSettingsPatch = Omit<Schemas['UpdateRoomSettingsRequest'], '$schema'>;
+
+/** Host-only: PATCH /rooms/{code}/settings with the creator's X-Host-Token. */
+export async function updateRoomSettings(code: string, hostToken: string, body: RoomSettingsPatch) {
+  return unwrap(
+    await api.PATCH('/api/v1/rooms/{code}/settings', {
+      params: { path: { code } },
+      body,
+      headers: { 'X-Host-Token': hostToken },
+    }),
+  );
+}
+
+/** Host-only: close the room for everyone. */
+export async function closeRoom(code: string, hostToken: string) {
+  const res = await api.DELETE('/api/v1/rooms/{code}', { params: { path: { code } }, headers: { 'X-Host-Token': hostToken } });
+  if (!res.response.ok) throw new ApiError(res.response.status, (res.error ?? null) as Problem | null, `HTTP ${res.response.status}`);
+}
+
 // ---- media / system ------------------------------------------------------------
 
 export function mediaUrl(mediaId: string): string {

@@ -5,6 +5,7 @@
  */
 import { create } from 'zustand';
 import type {
+  AISuggestionPayload,
   AnswerOptionsPayload,
   AnswerView,
   AppealView,
@@ -74,7 +75,21 @@ export interface CurrentQuestion {
   stakes: StakesView | null;
   stakeLog: PersonStakePayload[];
   hint: ShowmanHintPayload | null;
+  /** Hybrid mode: the AI verdict suggested to the showman, per person. */
+  aiSuggestions: Record<string, AISuggestionPayload>;
+  /** Players who gave up the button / passed in bidding (PASS event). */
+  passes: string[];
+  /** FINAL_THINK: written answering is running (durationMs). */
+  finalThinkMs: number | null;
   ended: boolean;
+}
+
+/** A recent score change, kept for the animated delta in the score strip. */
+export interface ScoreDelta {
+  delta: number;
+  reason: string;
+  /** Local receive instant. */
+  at: number;
 }
 
 export interface Prompts {
@@ -110,6 +125,10 @@ export interface GameState {
   winnerId: string | null;
   ended: boolean;
   gameEnd: GameEndPayload | null;
+  /** Last score change per person (PERSON_SCORE), for the animated delta. */
+  deltas: Record<string, ScoreDelta>;
+  /** Last verdict per person on the current question (VALIDATION), for toasts/strip states. */
+  lastValidation: ValidationPayload | null;
 }
 
 export interface ReduceContext {
@@ -144,6 +163,8 @@ export const initialGameState: GameState = {
   winnerId: null,
   ended: false,
   gameEnd: null,
+  deltas: {},
+  lastValidation: null,
 };
 
 type Msg = { [T in keyof ServerMessages]: { t: T; p: ServerMessages[T]; tRecv: number } }[keyof ServerMessages];
@@ -172,6 +193,9 @@ function newQuestion(p: ServerMessages['QUESTION_START']): CurrentQuestion {
     stakes: null,
     stakeLog: [],
     hint: null,
+    aiSuggestions: {},
+    passes: [],
+    finalThinkMs: null,
     ended: false,
   };
 }
@@ -237,6 +261,9 @@ export function fromSnapshot(game: GameSnapshot | null, ctx: ReduceContext): Gam
       stakes: q.stakes ?? null,
       stakeLog: [],
       hint: q.rights ? { rights: q.rights, wrongs: q.wrongs } : null,
+      aiSuggestions: {},
+      passes: [],
+      finalThinkMs: q.sub === 'hiddenAnswering' ? q.thinkingRemainingMs || 0 : null,
       ended: q.sub === 'end',
     };
   }
@@ -278,6 +305,8 @@ export function fromSnapshot(game: GameSnapshot | null, ctx: ReduceContext): Gam
     winnerId: game.winner || null,
     ended: game.ended,
     gameEnd: null,
+    deltas: {},
+    lastValidation: null,
   };
 }
 
@@ -334,6 +363,7 @@ export function reduceGame(state: GameState, msg: Msg, ctx: ReduceContext): Game
         question: newQuestion(msg.p),
         prompts: { ...s.prompts, askChoose: undefined, askSelectPlayer: undefined },
         pending: null,
+        lastValidation: null,
       };
     case 'QUESTION_CAPTION':
       return q ? { ...s, question: { ...q, theme: msg.p.theme, price: msg.p.price } } : s;
@@ -372,14 +402,24 @@ export function reduceGame(state: GameState, msg: Msg, ctx: ReduceContext): Game
           : s.prompts;
       const excluded = msg.p.excludedOption && q ? [...q.excludedOptions, msg.p.excludedOption] : q?.excludedOptions ?? [];
       return q
-        ? { ...s, prompts, question: { ...q, validations: [...q.validations, msg.p], excludedOptions: excluded } }
-        : { ...s, prompts };
+        ? {
+            ...s,
+            prompts,
+            lastValidation: msg.p,
+            question: { ...q, validations: [...q.validations, msg.p], excludedOptions: excluded },
+          }
+        : { ...s, prompts, lastValidation: msg.p };
     }
+    case 'AI_SUGGESTION':
+      return q ? { ...s, question: { ...q, aiSuggestions: { ...q.aiSuggestions, [msg.p.personId]: msg.p } } } : s;
+    case 'PASS':
+      return q && !q.passes.includes(msg.p.personId) ? { ...s, question: { ...q, passes: [...q.passes, msg.p.personId] } } : s;
     case 'PERSON_SCORE':
       return {
         ...s,
         scores: { ...s.scores, [msg.p.personId]: msg.p.score },
         players: s.players.map((pl) => (pl.id === msg.p.personId ? { ...pl, score: msg.p.score } : pl)),
+        deltas: { ...s.deltas, [msg.p.personId]: { delta: msg.p.delta, reason: msg.p.reason, at: msg.tRecv } },
       };
     case 'PLAYER_STATE':
       return { ...s, players: s.players.map((pl) => (pl.id === msg.p.personId ? { ...pl, state: msg.p.state } : pl)) };
@@ -405,7 +445,7 @@ export function reduceGame(state: GameState, msg: Msg, ctx: ReduceContext): Game
       return { ...s, table: { themes }, prompts: { ...s.prompts, askDeleteTheme: undefined } };
     }
     case 'FINAL_THINK':
-      return s;
+      return q ? { ...s, question: { ...q, finalThinkMs: msg.p.durationMs } } : s;
     case 'TIMER_START': {
       const t: TimerState = {
         id: msg.p.id,

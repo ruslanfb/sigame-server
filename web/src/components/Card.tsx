@@ -1,11 +1,24 @@
 import { clsx } from 'clsx';
 import type { HTMLAttributes, ReactNode } from 'react';
 
-export function Card({ title, children, className, ...rest }: Omit<HTMLAttributes<HTMLDivElement>, 'title'> & { title?: ReactNode }) {
+/** Studio panel: a dark surface with a soft border; `title` is a small caps label. */
+export function Card({
+  title,
+  action,
+  children,
+  className,
+  bodyClassName,
+  ...rest
+}: Omit<HTMLAttributes<HTMLDivElement>, 'title'> & { title?: ReactNode; action?: ReactNode; bodyClassName?: string }) {
   return (
-    <section className={clsx('rounded-lg border border-border bg-surface p-4 shadow-sm', className)} {...rest}>
-      {title !== undefined && <h2 className="mb-3 text-sm font-semibold text-muted">{title}</h2>}
-      {children}
+    <section className={clsx('rounded-lg border border-border bg-surface/90 p-4 shadow-md backdrop-blur-sm', className)} {...rest}>
+      {(title !== undefined || action) && (
+        <header className="mb-3 flex items-center justify-between gap-2">
+          {title !== undefined && <h2 className="text-xs font-bold tracking-widest text-muted uppercase">{title}</h2>}
+          {action}
+        </header>
+      )}
+      <div className={bodyClassName}>{children}</div>
     </section>
   );
 }

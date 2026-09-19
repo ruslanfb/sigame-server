@@ -5,11 +5,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArmController } from '../buzzer/armController.ts';
 import { beep, primeAudio } from '../buzzer/beep.ts';
+import { fmtDelta, WS_ERROR_LABEL } from '../lib/labels.ts';
 import { useBuzzerStore } from '../state/buzzer.ts';
 import { useDebugStore } from '../state/debug.ts';
 import { useGameStore, type ReduceContext } from '../state/game.ts';
 import { useRoomStore } from '../state/room.ts';
-import { useSessionStore, type Session } from '../state/session.ts';
+import { sessionKey, useSessionStore, type RoomPage, type Session } from '../state/session.ts';
 import { toastError, useToastStore } from '../state/toast.ts';
 import { RoomConnection } from '../ws/connection.ts';
 import { SyncController } from '../ws/sync.ts';
@@ -17,8 +18,9 @@ import type { RoomHandles } from './roomContext.ts';
 
 export type RoomSessionStatus = 'noSession' | 'wrongRoom' | 'ready';
 
-export function useRoomSession(code: string): { status: RoomSessionStatus; handles: RoomHandles | null; session: Session | null } {
-  const session = useSessionStore((s) => s.session);
+export function useRoomSession(code: string, page: RoomPage): { status: RoomSessionStatus; handles: RoomHandles | null; session: Session | null } {
+  const key = sessionKey(code, page);
+  const session = useSessionStore((s) => s.sessions[key] ?? null);
   const status: RoomSessionStatus = !session ? 'noSession' : session.roomCode !== code ? 'wrongRoom' : 'ready';
   const [handles, setHandles] = useState<RoomHandles | null>(null);
   const sessionRef = useRef(session);
@@ -49,7 +51,15 @@ export function useRoomSession(code: string): { status: RoomSessionStatus; handl
       myId: () => sessionRef.current?.personId ?? null,
       onChange: (st) => useBuzzerStore.getState().setArm(st),
       onLight: () => {
-        if (useBuzzerStore.getState().soundEnabled) beep();
+        const b = useBuzzerStore.getState();
+        if (b.soundEnabled) beep();
+        if (b.vibrateEnabled && typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+          try {
+            navigator.vibrate(30);
+          } catch {
+            /* best effort */
+          }
+        }
       },
     });
 
@@ -81,7 +91,7 @@ export function useRoomSession(code: string): { status: RoomSessionStatus; handl
       }),
       conn.on('WELCOME', (m) => {
         useRoomStore.getState().setWelcome(m.p);
-        useSessionStore.getState().setHostFlag(m.p.isHost);
+        useSessionStore.getState().setHostFlag(key, m.p.isHost);
         sync.start(m.p.syncPlan, { serverTimeMs: m.p.serverTimeMs, tRecv: m.tRecv });
       }),
       conn.on('SNAPSHOT', (m) => {
@@ -90,29 +100,61 @@ export function useRoomSession(code: string): { status: RoomSessionStatus; handl
         arm.onSnapshot(m.p.buzzer);
       }),
       conn.on('SYNC_ACK', (m) => sync.onAck(m.p, m.tRecv)),
-      conn.on('BUTTON_ARM', (m) => arm.onButtonArm(m.p)),
+      conn.on('BUTTON_ARM', (m) => {
+        arm.onButtonArm(m.p);
+        useBuzzerStore.getState().clearPending();
+      }),
       conn.on('PRESS_ACK', (m) => arm.onPressAck(m.p)),
-      conn.on('PRESS_PENDING', (m) => arm.onPressPending(m.p)),
-      conn.on('BUTTON_RESULT', (m) => arm.onButtonResult(m.p)),
-      conn.on('LOCKOUT', (m) => arm.onLockout(m.p)),
-      conn.on('QUESTION_START', () => sync.preArmBurst()),
+      conn.on('PRESS_PENDING', (m) => {
+        arm.onPressPending(m.p);
+        useBuzzerStore.getState().pushPending(m.p.playerId);
+      }),
+      conn.on('BUTTON_RESULT', (m) => {
+        arm.onButtonResult(m.p);
+        useBuzzerStore.getState().setLastResult(m.p);
+      }),
+      conn.on('LOCKOUT', (m) => {
+        arm.onLockout(m.p);
+        useBuzzerStore.getState().pushLockout({ ...m.p, at: m.tRecv });
+      }),
+      conn.on('QUESTION_START', () => {
+        sync.preArmBurst();
+        useBuzzerStore.getState().setLastResult(null);
+      }),
       conn.on('QUESTION_END', () => arm.disarm()),
       conn.on('ROUND_END', () => arm.disarm()),
       conn.on('ROOM_PERSONS', (m) => useRoomStore.getState().setPersons(m.p.persons)),
       conn.on('ROOM_SETTINGS', (m) => useRoomStore.getState().setInfo(m.p)),
       conn.on('HOST_CHANGED', (m) => {
         useRoomStore.getState().setHost(m.p.personId);
-        useSessionStore.getState().setHostFlag(m.p.personId === sessionRef.current?.personId);
+        useSessionStore.getState().setHostFlag(key, m.p.personId === sessionRef.current?.personId);
       }),
       conn.on('CHAT', (m) => useRoomStore.getState().pushChat(m.p)),
       conn.on('KICKED', (m) => useRoomStore.getState().setKicked(m.p.banned)),
       conn.on('ROOM_CLOSED', (m) => useRoomStore.getState().setClosed(m.p.reason)),
       conn.on('SESSION_REPLACED', () => useRoomStore.getState().setReplaced()),
       conn.on('CONN_QUALITY', (m) => useBuzzerStore.getState().setConnQuality(m.p.players)),
-      conn.on('ERROR', (m) => toastError(`${m.p.code}: ${m.p.message}`, m.p.ref)),
-      conn.on('USER_ERROR', (m) => toastError(`${m.p.code}: ${m.p.message}`)),
+      conn.on('ERROR', (m) => {
+        if (m.p.code === 'badToken') return; // the close dialog covers it
+        toastError(`${WS_ERROR_LABEL[m.p.code] ?? m.p.code}: ${m.p.message}`, m.p.ref);
+      }),
+      conn.on('USER_ERROR', (m) => toastError(`${WS_ERROR_LABEL[m.p.code] ?? m.p.code}: ${m.p.message}`)),
+      conn.on('VALIDATION', (m) => {
+        const me = sessionRef.current;
+        if (!me || me.role !== 'player' || m.p.personId !== me.personId) return;
+        const right = m.p.right;
+        useToastStore.getState().push({
+          kind: right ? 'success' : 'error',
+          text: right ? (m.p.factor && m.p.factor !== 1 ? `Засчитано частично (×${m.p.factor})` : 'Верно!') : 'Неверно',
+        });
+      }),
+      conn.on('PERSON_SCORE', (m) => {
+        const me = sessionRef.current;
+        if (!me || me.role !== 'player' || m.p.personId !== me.personId || m.p.reason === 'answer') return;
+        useToastStore.getState().push({ kind: 'info', text: `Счёт: ${fmtDelta(m.p.delta)}` });
+      }),
       conn.on('RESUME', (m) => {
-        if (!m.p.covered) useToastStore.getState().push({ kind: 'info', text: 'Resumed from snapshot (replay not available)' });
+        if (!m.p.covered) useToastStore.getState().push({ kind: 'info', text: 'Соединение восстановлено' });
       }),
     );
 
@@ -137,7 +179,7 @@ export function useRoomSession(code: string): { status: RoomSessionStatus; handl
       conn.close();
       setHandles(null);
     };
-  }, [code, token]);
+  }, [code, key, token]);
 
   return useMemo(() => ({ status, handles, session }), [status, handles, session]);
 }

@@ -340,15 +340,20 @@ export class ArmController {
     const raf = this.deps.raf ?? ((cb) => this.deps.setTimeout(cb, 0));
     raf(() => {
       this.rafActive = false;
-      if (this.disposed || this.state.armAtLocal !== armAtLocal || this.state.phase !== 'armed') return;
+      const ph = this.state.phase;
+      if (this.disposed || this.state.armAtLocal !== armAtLocal || (ph !== 'armed' && ph !== 'locked')) return;
       this.preciseWait(armAtLocal);
     });
   }
 
   private light(): void {
-    if (this.state.phase !== 'armed') return;
+    const st = this.state;
+    // A locally locked player (misfire / LOCKOUT while waiting) still gets the
+    // light stamped, so a press after the lockout is a normal PRESS.
+    const lockedBeforeLight = st.phase === 'locked' && st.armId !== null && !st.litLocal;
+    if (st.phase !== 'armed' && !lockedBeforeLight) return;
     const litLocal = this.deps.now(); // the instant the DOM changes (emit follows synchronously)
-    this.state = { ...this.state, phase: 'lit', litLocal };
+    this.state = { ...st, phase: 'lit', litLocal };
     if (this.state.lockedUntilLocal > litLocal) this.state = { ...this.state, phase: 'locked' };
     this.emit();
     this.deps.onLight?.();

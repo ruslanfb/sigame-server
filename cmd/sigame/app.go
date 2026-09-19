@@ -21,6 +21,7 @@ import (
 	"sigame/internal/packs"
 	"sigame/internal/room"
 	"sigame/internal/ws"
+	"sigame/web"
 )
 
 // app is the assembled server: the HTTP handler (REST API, docs, media,
@@ -101,6 +102,7 @@ func buildApp(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*ap
 		AIStatus:  judgeStatus,
 		Ping:      sqlDB.PingContext,
 		FFProbe:   ffprobeOK,
+		WebFS:     web.Dist(),
 		Version:   version,
 		Logger:    logger,
 		StartedAt: time.Now(),

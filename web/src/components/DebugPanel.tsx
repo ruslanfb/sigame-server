@@ -6,11 +6,11 @@ import { useDebugStore } from '../state/debug.ts';
 import { activePrompts, useGameStore } from '../state/game.ts';
 import { useRoomStore } from '../state/room.ts';
 import { Card } from './Card.tsx';
-import { TimerList } from './TimerBar.tsx';
+import { TimerBar } from './TimerBar.tsx';
 
 /**
- * Debug panel for validating the foundation against the real server:
- * connection state, clock model, last 20 message types, stage, prompts, buzzer.
+ * Debug panel (`?debug=1` or the "dbg" toggle): connection state, clock model,
+ * last 20 message types, stage, prompts, buzzer.
  */
 export function DebugPanel() {
   const connection = useDebugStore((s) => s.connection);
@@ -23,6 +23,7 @@ export function DebugPanel() {
   const welcome = useRoomStore((s) => s.welcome);
   const [open, setOpen] = useState(true);
   const localNow = useNow(500);
+  const timers = Object.values(game.timers);
 
   return (
     <Card
@@ -49,9 +50,8 @@ export function DebugPanel() {
               model:{' '}
               {model ? (
                 <>
-                  <b>{model.quality}</b> off {fmtMs(model.offsetMs, 2)} rtt {fmtMs(model.rttRefMs)} σ{' '}
-                  {fmtMs(model.sigmaMs)} ±u {fmtMs(model.uMs)} lead {fmtMs(model.leadMs, 0)} samples{' '}
-                  {model.samples} acks {syncAcks}
+                  <b>{model.quality}</b> off {fmtMs(model.offsetMs, 2)} rtt {fmtMs(model.rttRefMs)} σ {fmtMs(model.sigmaMs)} ±u{' '}
+                  {fmtMs(model.uMs)} lead {fmtMs(model.leadMs, 0)} samples {model.samples} acks {syncAcks}
                   {model.flags?.length ? ` flags ${model.flags.join(',')}` : ''}
                 </>
               ) : (
@@ -74,8 +74,8 @@ export function DebugPanel() {
               {arm.result ? ` result ${arm.result.kind}${arm.result.winnerId ? ` ${arm.result.winnerId.slice(0, 8)}` : ''}` : ''}
               {arm.lockedUntilLocal > localNow ? ` locked ${Math.ceil((arm.lockedUntilLocal - localNow) / 1000)} s` : ''}
             </div>
-            <div className="mt-2">
-              <TimerList timers={game.timers} />
+            <div className="mt-2 flex flex-col gap-1">
+              {timers.length === 0 ? <span className="text-muted">no timers</span> : timers.map((t) => <TimerBar key={t.id} timer={t} label={t.kind} />)}
             </div>
           </div>
           <div>

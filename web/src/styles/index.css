@@ -3,7 +3,7 @@
 
 /*
  * Tailwind v4 theme: utilities like `bg-accent`, `text-muted`, `rounded-md`
- * resolve to the `--sg-*` tokens (placeholders until the Penpot tokens land).
+ * resolve to the `--sg-*` tokens (the same names live in the Penpot file).
  * `inline` makes utilities reference the token variable directly so the dark
  * scheme overrides cascade correctly.
  */
@@ -60,6 +60,11 @@
   --shadow-sm: var(--sg-shadow-sm);
   --shadow-md: var(--sg-shadow-md);
   --shadow-lg: var(--sg-shadow-lg);
+
+  --animate-float-up: sg-float-up 1.6s ease-out forwards;
+  --animate-pulse-gold: sg-pulse-gold 1.2s ease-in-out infinite;
+  --animate-fade-in: sg-fade-in 0.35s ease-out both;
+  --animate-pop: sg-pop 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
 }
 
 html,
@@ -78,6 +83,13 @@ body {
   touch-action: manipulation;
 }
 
+/* Gold focus ring everywhere (keyboard only). */
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--sg-accent);
+  outline-offset: 2px;
+  border-radius: var(--sg-radius-sm);
+}
+
 /* Millionaire-style hexagonal plate (answers, prices, money ladder). */
 .hex {
   clip-path: var(--sg-hex-clip);
@@ -90,14 +102,125 @@ body {
   background: var(--sg-gradient-gold);
   color: var(--sg-accent-contrast);
 }
+.hex-dim {
+  background: var(--sg-surface);
+  color: var(--sg-muted);
+  opacity: 0.45;
+}
+/* A hex plate with a 2px border: an outer plate acts as the frame. */
+.hex-frame {
+  clip-path: var(--sg-hex-clip);
+  padding: 2px;
+  background: var(--sg-border-strong);
+}
+.hex-frame-gold {
+  background: var(--sg-gradient-gold);
+}
+.hex-frame-primary {
+  background: var(--sg-gradient-primary);
+}
 .glow-gold {
   box-shadow: var(--sg-glow-gold);
 }
 .glow-blue {
   box-shadow: var(--sg-glow-blue);
 }
+.glow-danger {
+  box-shadow: var(--sg-glow-danger);
+}
+.glow-success {
+  box-shadow: var(--sg-glow-success);
+}
 .font-display {
   font-family: var(--sg-font-display);
   letter-spacing: 0.02em;
   text-transform: uppercase;
+}
+.bg-gradient-gold {
+  background: var(--sg-gradient-gold);
+}
+.bg-gradient-primary {
+  background: var(--sg-gradient-primary);
+}
+.text-gold-gradient {
+  background: var(--sg-gradient-gold);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* The TV page hides the cursor when idle (set by script). */
+.cursor-hidden,
+.cursor-hidden * {
+  cursor: none !important;
+}
+
+/* Thin studio divider */
+.hr-glow {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--sg-border-strong), transparent);
+}
+
+/* hide number spinners (stake input) */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+@keyframes sg-float-up {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.9);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(0) scale(1.05);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-18px) scale(1);
+  }
+}
+@keyframes sg-pulse-gold {
+  0%,
+  100% {
+    box-shadow: 0 0 18px rgb(245 183 0 / 0.35);
+  }
+  50% {
+    box-shadow: 0 0 42px rgb(245 183 0 / 0.75);
+  }
+}
+@keyframes sg-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes sg-pop {
+  from {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
