@@ -163,7 +163,6 @@ func (r *Room) finishArm(st *armState, res buzzer.Result) {
 	r.stopArmTimers(st)
 	r.arm = nil
 	r.armActiveVal.Store(false)
-	r.recordArm(st, res)
 
 	// Staff get the full ranking; players and viewers only the decision plus
 	// their own scored reaction.
@@ -182,6 +181,8 @@ func (r *Room) finishArm(st *armState, res buzzer.Result) {
 		}
 		r.send(p, MsgButtonResult, pub)
 	}
+	// The audit trail follows the public decision so clients see the result first.
+	r.recordArm(st, res)
 
 	if r.game == nil || r.closing {
 		return
