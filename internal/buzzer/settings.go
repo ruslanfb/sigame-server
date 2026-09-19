@@ -55,10 +55,10 @@ const (
 // Settings are the host-configurable buzzer parameters of a room. Everything
 // else (tol, u, lead, σ, err) is derived from measurements and only displayed.
 type Settings struct {
-	Mode                Mode       `json:"mode" doc:"Buzzer algorithm: anchoredHybrid (fair, default), serverArrival, randomWindow, clientReaction (unsafe), writtenAll."`
-	NetProfile          NetProfile `json:"netProfile" doc:"Room network profile: lan, wifi or wan. Chooses collection/tolerance caps."`
-	TieMode             TieMode    `json:"tieMode" doc:"resolution: only presses within tieMs tie; uncertainty: presses within their combined measurement error tie."`
-	TieBreak            TieBreak   `json:"tieBreak" doc:"Rule for contested buttons: likelihood, mostLikely, random, lowestScore, fewestButtonsWon, rotate, allPlay."`
+	Mode                Mode       `json:"mode" enum:"anchoredHybrid,serverArrival,randomWindow,clientReaction,writtenAll" doc:"Buzzer algorithm: anchoredHybrid (fair, default), serverArrival, randomWindow, clientReaction (unsafe), writtenAll."`
+	NetProfile          NetProfile `json:"netProfile" enum:"lan,wifi,wan" doc:"Room network profile: lan, wifi or wan. Chooses collection/tolerance caps."`
+	TieMode             TieMode    `json:"tieMode" enum:"resolution,uncertainty" doc:"resolution: only presses within tieMs tie; uncertainty: presses within their combined measurement error tie."`
+	TieBreak            TieBreak   `json:"tieBreak" enum:"likelihood,mostLikely,random,lowestScore,fewestButtonsWon,rotate,allPlay" doc:"Rule for contested buttons: likelihood, mostLikely, random, lowestScore, fewestButtonsWon, rotate, allPlay."`
 	ArmJitterMinMs      int64      `json:"armJitterMinMs" doc:"Minimum random delay between the end of reading and the light (anti-anticipation)."`
 	ArmJitterMaxMs      int64      `json:"armJitterMaxMs" doc:"Maximum random delay between the end of reading and the light."`
 	PressWindowMs       int64      `json:"pressWindowMs" doc:"How long the button stays armed when nobody presses."`

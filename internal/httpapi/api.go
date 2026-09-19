@@ -212,6 +212,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) { s.Router.Se
 
 func (s *Server) humaConfig() huma.Config {
 	cfg := huma.DefaultConfig("SIGame Server API", s.deps.Version)
+	cfg.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
+		"hostToken": {Type: "apiKey", In: "header", Name: "X-Host-Token", Description: "Room creator secret returned by POST /rooms; required by the host-only room operations (401 when missing, 403 when wrong)."},
+	}
 	cfg.OpenAPIPath = "/openapi"
 	cfg.DocsPath = "/docs"
 	cfg.DocsRenderer = huma.DocsRendererScalar

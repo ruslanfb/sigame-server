@@ -17,7 +17,7 @@ type AITestRequest struct {
 	QuestionText    string   `json:"questionText,omitempty" doc:"Plain-text question body"`
 	Right           []string `json:"right,omitempty" doc:"Accepted answers; empty = use the built-in sample request"`
 	Wrong           []string `json:"wrong,omitempty" doc:"Known wrong answers"`
-	AnswerType      string   `json:"answerType,omitempty" enum:",text,select,number,point,client" doc:"Empty = text"`
+	AnswerType      string   `json:"answerType,omitempty" enum:"text,select,number,point,client" doc:"Empty = text"`
 	Deviation       float64  `json:"deviation,omitempty" doc:"number: ± tolerance; point: distance tolerance"`
 	PlayerAnswer    string   `json:"playerAnswer,omitempty" doc:"The answer to judge"`
 	ShowmanComments string   `json:"showmanComments,omitempty" doc:"Pack author's notes for the showman"`

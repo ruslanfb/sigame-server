@@ -137,7 +137,7 @@ type Theme struct {
 type Question struct {
 	ID     string         `json:"id" doc:"UUIDv7"`
 	Price  int            `json:"price" doc:"Nominal price; -1 = empty slot; 0 is typical for final-round questions"`
-	Type   QuestionType   `json:"type" doc:"simple|stake|stakeAll|secret|secretPublicPrice|secretNoQuestion|noRisk|forAll|custom or any custom name"`
+	Type   QuestionType   `json:"type" doc:"Well-known: simple|stake|stakeAll|secret|secretPublicPrice|secretNoQuestion|noRisk|forAll|custom; any other non-empty name is a custom type played manually"`
 	Params QuestionParams `json:"params"`
 	Right  []string       `json:"right" doc:"Accepted answers (text) / option label (select) / number (number) / x,y,ratio (point)"`
 	Wrong  []string       `json:"wrong,omitempty" doc:"Known wrong answers (help the AI/fuzzy judge reject them)"`
@@ -152,8 +152,8 @@ type QuestionParams struct {
 	Answer           []ContentItem  `json:"answer,omitempty" doc:"Optional media/text shown as the answer; falls back to Right[0]"`
 	Theme            string         `json:"theme,omitempty" doc:"secret*: the question's own theme"`
 	Price            *NumberSet     `json:"price,omitempty" doc:"secret*: price the recipient can choose from"`
-	SelectionMode    SelectionMode  `json:"selectionMode,omitempty" enum:",any,exceptCurrent" doc:"secret*: may the chooser keep it"`
-	AnswerType       AnswerType     `json:"answerType,omitempty" enum:",text,select,number,point,client" doc:"Empty = text"`
+	SelectionMode    SelectionMode  `json:"selectionMode,omitempty" enum:"any,exceptCurrent" doc:"secret*: may the chooser keep it"`
+	AnswerType       AnswerType     `json:"answerType,omitempty" enum:"text,select,number,point,client" doc:"Empty = text"`
 	AnswerOptions    []AnswerOption `json:"answerOptions,omitempty" doc:"select: labelled options"`
 	AnswerDeviation  float64        `json:"answerDeviation,omitempty" doc:"number: ± tolerance; point: distance tolerance"`
 	AnswerDurationMs int64          `json:"answerDurationMs,omitempty" doc:"Overrides the answering timer for this question"`
@@ -181,7 +181,7 @@ type ContentItem struct {
 	Text       string      `json:"text,omitempty" maxLength:"1500" doc:"For type=text"`
 	MediaID    string      `json:"mediaId,omitempty" doc:"Media stored on this server (sha256 hex)"`
 	URL        string      `json:"url,omitempty" maxLength:"1500" doc:"External media URL"`
-	Placement  Placement   `json:"placement,omitempty" enum:",screen,replic,background" doc:"Empty = screen (audio: background)"`
+	Placement  Placement   `json:"placement,omitempty" enum:"screen,replic,background" doc:"Empty = screen (audio: background)"`
 	DurationMs int64       `json:"durationMs,omitempty" doc:"How long the item stays; 0 = automatic"`
 	NoWait     bool        `json:"noWait,omitempty" doc:"Play together with the next item (SIQ waitForFinish=False)"`
 }

@@ -19,8 +19,8 @@ import (
 const (
 	DefaultModel     = "tencent/hy4-preview"
 	DefaultBaseURL   = "https://openrouter.ai/api/v1"
-	DefaultTimeout   = 8 * time.Second
-	DefaultMaxTokens = 200
+	DefaultTimeout   = 25 * time.Second // reasoning models (e.g. tencent/hy4-preview) need 15–20 s
+	DefaultMaxTokens = 2000             // reasoning tokens count against max_tokens
 	DefaultAppName   = "sigame-server"
 
 	retryBackoff = 500 * time.Millisecond
@@ -315,8 +315,21 @@ func (j *OpenRouterJudge) complete(parent context.Context, msgs []Message) (Verd
 		if resp.Usage != nil {
 			usage = *resp.Usage
 		}
-		v, err := ParseVerdict(string(resp.Choices[0].Message.Content))
+		choice := resp.Choices[0]
+		v, err := ParseVerdict(string(choice.Message.Content))
 		if err != nil {
+			if choice.FinishReason == "length" {
+				// Reasoning models spend the token budget on hidden thinking and
+				// return a truncated answer; a JSON-schema constraint makes some
+				// of them never finish. Retry once without the schema, then give up.
+				if withSchema {
+					j.cfg.Logger.Info("ai: truncated structured answer, retrying without response_format", "model", j.cfg.Model, "totalTokens", usage.TotalTokens)
+					j.useSchema.Store(false)
+					withSchema = false
+					continue
+				}
+				return Verdict{}, usage, fmt.Errorf("%w: answer truncated (finish_reason=length, %d tokens); raise SIGAME_AI_MAX_TOKENS or pick a faster model", ErrBadResponse, usage.TotalTokens)
+			}
 			return Verdict{}, usage, err
 		}
 		return v, usage, nil

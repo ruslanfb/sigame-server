@@ -3,6 +3,12 @@
 Сервер — один статический бинарник (Go, без CGO). Хранит данные в SQLite и файлах медиа в каталоге данных.
 Играть можно по локальной сети (по умолчанию) или через интернет (за reverse-proxy / с публичным URL).
 
+> **Важно про безопасность.** Настройки по умолчанию рассчитаны на **локальную сеть среди своих**: REST API не требует
+> аутентификации (любой в сети может создавать/удалять паки и комнаты, загружать медиа, вызывать тестовый запрос к ИИ),
+> CORS открыт, лимиты на число комнат/загрузок мягкие. Для публичного интернета ставьте сервер за reverse-proxy с
+> аутентификацией (basic auth / OAuth-proxy) хотя бы для `/api/v1/packs*`, `/api/v1/media*`, `/api/v1/ai/*` и `POST /api/v1/rooms`,
+> ограничивайте `SIGAME_CORS_ORIGINS`, включайте лимиты прокси на частоту запросов и размер тела, уменьшайте `SIGAME_MAX_SIQ_MB`.
+
 ## Быстрый старт
 
 ```bash
@@ -11,6 +17,8 @@ make build            # → bin/sigame
 # запуск
 ./bin/sigame          # слушает :8080, данные в ./data
 ```
+
+Флаги: `--version` — версия; `--print-openapi` — вывести спецификацию OpenAPI в JSON и выйти (так собирается `docs/openapi.json`).
 
 При старте сервер печатает адреса для подключения, например:
 
@@ -56,9 +64,10 @@ SIGame server запущен. Адреса для подключения:
 | `OPENROUTER_API_KEY` | `openRouterApiKey` | — | Ключ OpenRouter — включает ИИ-ведущего. |
 | `OPENROUTER_MODEL` | `openRouterModel` | `tencent/hy4-preview` | Модель-судья. |
 | `OPENROUTER_BASE_URL` | `openRouterBaseUrl` | `https://openrouter.ai/api/v1` | Базовый URL API. |
-| `SIGAME_AI_TIMEOUT` | `aiTimeout` | `8s` | Таймаут запроса к ИИ; после него применяется нечёткое сравнение. |
+| `SIGAME_AI_TIMEOUT` | `aiTimeout` | `25s` | Таймаут запроса к ИИ (с одним повтором); после него применяется нечёткое сравнение. |
 | `SIGAME_AI_TEMPERATURE` | `aiTemperature` | `0` | Температура модели. |
-| `SIGAME_AI_MAX_TOKENS` | `aiMaxTokens` | `200` | Лимит токенов ответа. |
+| `SIGAME_AI_MAX_TOKENS` | `aiMaxTokens` | `2000` | Лимит токенов ответа (у reasoning-моделей сюда входят скрытые «рассуждения»). |
+| `SIGAME_AI_STRUCTURED` | `aiStructured` | `auto` | Слать ли `response_format: json_schema`: `on` / `off` / `auto` (для `tencent/hy*` — off, они не завершают ответ со схемой). |
 | `SIGAME_DEV` | `dev` | `false` | Режим разработки (подробные ошибки). |
 | `SIGAME_PPROF` | `pprof` | `false` | Включить `/debug/pprof`. |
 

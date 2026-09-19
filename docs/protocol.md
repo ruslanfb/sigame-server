@@ -12,9 +12,9 @@ Source of truth for payload fields: `internal/room/messages.go` (room messages),
 ## 1. Connection lifecycle
 
 ```
-POST /api/v1/rooms                 → {room, hostToken}          (creator keeps hostToken)
-POST /api/v1/rooms/{code}/join     → {token, personId, role, isHost, roomCode}
-GET  /ws?room={code}&token={token} → WebSocket
+POST /api/v1/rooms                 → {room, hostToken, joinUrl}          (creator keeps hostToken)
+POST /api/v1/rooms/{code}/join     → {sessionToken, personId, role, isHost, roomCode, wsUrl}
+GET  /ws?room={code}&token={sessionToken} → WebSocket   (wsUrl is relative: prefix the server origin, use ws:// or wss://)
 ```
 
 1. **Create** a room over REST (pack, rules, times, buzzer settings, showman mode). The response carries
@@ -54,7 +54,7 @@ sequenceDiagram
     participant R as REST
     participant W as /ws (room actor)
     C->>R: POST /rooms/{code}/join {name, role}
-    R-->>C: {token, personId, role, isHost}
+    R-->>C: {sessionToken, personId, role, isHost, wsUrl}
     C->>W: GET /ws?room=CODE&token=…
     W-->>C: WELCOME {personId, role, serverTimeMs, syncPlan, buzzerSettings}
     W-->>C: SNAPSHOT {room, game|null, buzzer, lastSeq: 0}

@@ -162,7 +162,10 @@ func newJudge(cfg *config.Config, logger *slog.Logger) (ai.Judge, httpapi.AIStat
 		Temperature: cfg.AITemperature,
 		MaxTokens:   cfg.AIMaxTokens,
 		Referer:     cfg.PublicURL,
-		Logger:      logger,
+		// Reasoning models (tencent/hy*) never finish a json_schema-constrained
+		// answer; SIGAME_AI_STRUCTURED=auto turns the schema off for them.
+		StructuredOutputs: cfg.AIStructuredOutputs(),
+		Logger:            logger,
 	})
 	return &ai.Composite{Fuzzy: fuzzy, AI: or, Cache: ai.NewCache(0), AITimeout: cfg.AIJudgeTimeout, Logger: logger}, or
 }

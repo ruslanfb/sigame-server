@@ -21,6 +21,9 @@ import (
 // (internal/ws) → play. The host-only operations take the host token in the
 // X-Host-Token header; the manager verifies it against the room.
 
+// hostSecurity marks host-only operations in the OpenAPI spec (apiKey in X-Host-Token).
+var hostSecurity = []map[string][]string{{"hostToken": {}}}
+
 const (
 	// hostTokenHeader carries the room creator's secret.
 	hostTokenHeader = "X-Host-Token"
@@ -119,7 +122,7 @@ type roomCodeInput struct {
 
 type hostInput struct {
 	Code      string `path:"code" doc:"5-character join code (case-insensitive)"`
-	HostToken string `header:"X-Host-Token" doc:"Required: the hostToken returned by POST /rooms. 401 when missing, 403 when it does not match the room."`
+	HostToken string `header:"X-Host-Token" doc:"The hostToken returned by POST /rooms. 401 when missing, 403 when it does not match the room."`
 }
 
 type createRoomInput struct {
@@ -382,6 +385,7 @@ func (s *Server) registerRooms() {
 
 	huma.Register(s.API, huma.Operation{
 		OperationID: "updateRoomSettings",
+		Security:    hostSecurity,
 		Method:      http.MethodPatch,
 		Path:        basePath + "/rooms/{code}/settings",
 		Tags:        []string{tagRooms},
@@ -392,6 +396,7 @@ func (s *Server) registerRooms() {
 
 	huma.Register(s.API, huma.Operation{
 		OperationID: "kickPerson",
+		Security:    hostSecurity,
 		Method:      http.MethodPost,
 		Path:        basePath + "/rooms/{code}/kick",
 		Tags:        []string{tagRooms},
@@ -402,6 +407,7 @@ func (s *Server) registerRooms() {
 
 	huma.Register(s.API, huma.Operation{
 		OperationID: "unbanPerson",
+		Security:    hostSecurity,
 		Method:      http.MethodPost,
 		Path:        basePath + "/rooms/{code}/unban",
 		Tags:        []string{tagRooms},
@@ -412,6 +418,7 @@ func (s *Server) registerRooms() {
 
 	huma.Register(s.API, huma.Operation{
 		OperationID: "transferHost",
+		Security:    hostSecurity,
 		Method:      http.MethodPost,
 		Path:        basePath + "/rooms/{code}/transfer-host",
 		Tags:        []string{tagRooms},
@@ -422,6 +429,7 @@ func (s *Server) registerRooms() {
 
 	huma.Register(s.API, huma.Operation{
 		OperationID: "closeRoom",
+		Security:    hostSecurity,
 		Method:      http.MethodDelete,
 		Path:        basePath + "/rooms/{code}",
 		Tags:        []string{tagRooms},
@@ -432,6 +440,7 @@ func (s *Server) registerRooms() {
 
 	huma.Register(s.API, huma.Operation{
 		OperationID: "getBuzzLog",
+		Security:    hostSecurity,
 		Method:      http.MethodGet,
 		Path:        basePath + "/rooms/{code}/buzz-log",
 		Tags:        []string{tagRooms},

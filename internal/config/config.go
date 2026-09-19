@@ -54,9 +54,10 @@ type Config struct {
 	OpenRouterAPIKey  string        `env:"OPENROUTER_API_KEY" yaml:"openRouterApiKey"`
 	OpenRouterModel   string        `env:"OPENROUTER_MODEL" yaml:"openRouterModel" envDefault:"tencent/hy4-preview"`
 	OpenRouterBaseURL string        `env:"OPENROUTER_BASE_URL" yaml:"openRouterBaseUrl" envDefault:"https://openrouter.ai/api/v1"`
-	AIJudgeTimeout    time.Duration `env:"SIGAME_AI_TIMEOUT" yaml:"aiTimeout" envDefault:"8s"`
+	AIJudgeTimeout    time.Duration `env:"SIGAME_AI_TIMEOUT" yaml:"aiTimeout" envDefault:"25s"`
 	AITemperature     float64       `env:"SIGAME_AI_TEMPERATURE" yaml:"aiTemperature" envDefault:"0"`
-	AIMaxTokens       int           `env:"SIGAME_AI_MAX_TOKENS" yaml:"aiMaxTokens" envDefault:"200"`
+	AIMaxTokens       int           `env:"SIGAME_AI_MAX_TOKENS" yaml:"aiMaxTokens" envDefault:"2000"`
+	AIStructured      string        `env:"SIGAME_AI_STRUCTURED" yaml:"aiStructured" envDefault:"auto"` // auto|on|off: send response_format json_schema (auto = off for tencent/hy* reasoning models)
 
 	// Misc
 	Dev   bool `env:"SIGAME_DEV" yaml:"dev" envDefault:"false"` // dev mode: pprof, verbose errors
@@ -130,12 +131,36 @@ func (c *Config) Validate() error {
 	if c.AIJudgeTimeout < 500*time.Millisecond {
 		errs = append(errs, errors.New("SIGAME_AI_TIMEOUT must be ≥ 500ms"))
 	}
+	switch strings.ToLower(c.AIStructured) {
+	case "auto", "on", "off":
+		c.AIStructured = strings.ToLower(c.AIStructured)
+	default:
+		errs = append(errs, fmt.Errorf("SIGAME_AI_STRUCTURED must be auto|on|off, got %q", c.AIStructured))
+	}
 	c.PublicURL = strings.TrimRight(c.PublicURL, "/")
 	return errors.Join(errs...)
 }
 
 // AIConfigured reports whether the AI showman can be used.
 func (c *Config) AIConfigured() bool { return c.OpenRouterAPIKey != "" }
+
+// AIStructuredOutputs resolves SIGAME_AI_STRUCTURED: nil = provider default
+// (auto → off for Tencent Hy reasoning models, which never finish a
+// json_schema-constrained answer; on for everything else).
+func (c *Config) AIStructuredOutputs() *bool {
+	v := true
+	switch c.AIStructured {
+	case "off":
+		v = false
+	case "on":
+		v = true
+	default:
+		if strings.HasPrefix(c.OpenRouterModel, "tencent/hy") {
+			v = false
+		}
+	}
+	return &v
+}
 
 // Redacted returns a copy safe for logging.
 func (c Config) Redacted() Config {
