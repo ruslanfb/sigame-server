@@ -17,9 +17,9 @@ import (
 
 // Defaults for Config.
 const (
-	DefaultModel     = "tencent/hy4-preview"
+	DefaultModel     = "google/gemini-3-flash-preview"
 	DefaultBaseURL   = "https://openrouter.ai/api/v1"
-	DefaultTimeout   = 25 * time.Second // reasoning models (e.g. tencent/hy4-preview) need 15–20 s
+	DefaultTimeout   = 25 * time.Second // generous: reasoning models (e.g. tencent/hy4-preview) need 15–20 s
 	DefaultMaxTokens = 2000             // reasoning tokens count against max_tokens
 	DefaultAppName   = "sigame-server"
 

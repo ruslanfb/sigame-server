@@ -75,7 +75,7 @@ func newTestEnv(t *testing.T, opts ...envOpt) *testEnv {
 		MaxSIQMB:          64,
 		AllowHTMLScripts:  true,
 		MaxPlayersPerRoom: 12,
-		OpenRouterModel:   "tencent/hy4-preview",
+		OpenRouterModel:   "google/gemini-3-flash-preview",
 		OpenRouterBaseURL: "https://openrouter.ai/api/v1",
 	}
 	repo := packs.NewRepo(sqlDB)

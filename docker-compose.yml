@@ -10,7 +10,7 @@ services:
       SIGAME_LOG_FORMAT: json
       # SIGAME_PUBLIC_URL: https://quiz.example.com
       # OPENROUTER_API_KEY: sk-or-v1-...
-      # OPENROUTER_MODEL: tencent/hy4-preview
+      # OPENROUTER_MODEL: google/gemini-3-flash-preview
     volumes:
       - sigame-data:/data
     restart: unless-stopped

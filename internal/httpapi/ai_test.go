@@ -41,7 +41,7 @@ func TestAIUnconfigured(t *testing.T) {
 	var st ai.StatusInfo
 	decodeJSON(t, rec, &st)
 	require.False(t, st.Configured)
-	require.Equal(t, "tencent/hy4-preview", st.Model)
+	require.Equal(t, "google/gemini-3-flash-preview", st.Model)
 
 	rec = e.do(t, http.MethodPost, "/api/v1/ai/test", nil)
 	require.Equal(t, http.StatusServiceUnavailable, rec.Code, rec.Body.String())

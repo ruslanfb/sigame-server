@@ -7,7 +7,7 @@ Research inputs live in `../research/*.md` (rules, .siq format, implementations,
 - Self-hosted backend for «Своя игра» (SIGame-compatible), played over LAN (and optionally Internet).
 - **Backend only**: REST API (OpenAPI 3.1 + Scalar docs UI), WebSocket game protocol, media serving. No production UI. A tiny static "API docs" page and the OpenAPI JSON are the only HTML served (plus an optional minimal debug page is NOT in scope).
 - Roles: `host` (room owner, may also be showman), `showman` (human or AI), `player` (≤ 12), `viewer`.
-- Answer judging: human showman **or** AI showman via OpenRouter (`OPENROUTER_API_KEY`, `OPENROUTER_MODEL` default `tencent/hy4-preview`, text-only) with fuzzy-match fallback.
+- Answer judging: human showman **or** AI showman via OpenRouter (`OPENROUTER_API_KEY`, `OPENROUTER_MODEL` default `google/gemini-3-flash-preview`; `tencent/hy4-preview` supported but slow) with fuzzy-match fallback.
 - Packs: own JSON model (superset of SIQ v5 semantics) + **import .siq v4/v5** + **export .siq v5**. Full CRUD of packs/rounds/themes/questions via REST. Media: image (png/jpg/gif/webp), audio (mp3/ogg/m4a/wav), video (mp4/webm), html.
 - Buzzer fairness: **AnchoredHybrid** (see `../research/07-fairness-judge-*.md` syntheses; consolidated in `40-buzzer-spec.md`). Go terminates TCP itself → kernel RTT anchor (`TCP_INFO` on Linux, `TCP_CONNECTION_INFO` on macOS, `SIO_TCP_INFO` on Windows if feasible, else WS-ping anchor only).
 

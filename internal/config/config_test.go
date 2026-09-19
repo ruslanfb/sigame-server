@@ -17,7 +17,7 @@ func TestLoadDefaults(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, ":8080", cfg.Addr)
 	require.Equal(t, "./data", cfg.DataDir)
-	require.Equal(t, "tencent/hy4-preview", cfg.OpenRouterModel)
+	require.Equal(t, "google/gemini-3-flash-preview", cfg.OpenRouterModel)
 	require.Equal(t, 25*time.Second, cfg.AIJudgeTimeout)
 	require.True(t, cfg.MDNS)
 	require.False(t, cfg.AIConfigured())

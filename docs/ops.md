@@ -62,7 +62,7 @@ SIGame server запущен. Адреса для подключения:
 | `SIGAME_WS_MAX_MESSAGE_BYTES` | `wsMaxMessageBytes` | `65536` | Максимальный размер WebSocket-сообщения. |
 | `SIGAME_WS_MESSAGES_PER_SEC` | `wsMessagesPerSec` | `40` | Лимит сообщений в секунду на соединение. |
 | `OPENROUTER_API_KEY` | `openRouterApiKey` | — | Ключ OpenRouter — включает ИИ-ведущего. |
-| `OPENROUTER_MODEL` | `openRouterModel` | `tencent/hy4-preview` | Модель-судья. |
+| `OPENROUTER_MODEL` | `openRouterModel` | `google/gemini-3-flash-preview` | Модель-судья (быстрая, ~2 с). `tencent/hy4-preview` тоже работает, но ~9–16 с на вердикт. |
 | `OPENROUTER_BASE_URL` | `openRouterBaseUrl` | `https://openrouter.ai/api/v1` | Базовый URL API. |
 | `SIGAME_AI_TIMEOUT` | `aiTimeout` | `25s` | Таймаут запроса к ИИ (с одним повтором); после него применяется нечёткое сравнение. |
 | `SIGAME_AI_TEMPERATURE` | `aiTemperature` | `0` | Температура модели. |
@@ -78,7 +78,7 @@ addr: ":8080"
 dataDir: /var/lib/sigame
 logFormat: json
 openRouterApiKey: sk-or-v1-...
-openRouterModel: tencent/hy4-preview
+openRouterModel: google/gemini-3-flash-preview
 ```
 
 ## Локальная сеть

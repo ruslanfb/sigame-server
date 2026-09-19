@@ -52,7 +52,7 @@ type Config struct {
 
 	// AI showman (OpenRouter)
 	OpenRouterAPIKey  string        `env:"OPENROUTER_API_KEY" yaml:"openRouterApiKey"`
-	OpenRouterModel   string        `env:"OPENROUTER_MODEL" yaml:"openRouterModel" envDefault:"tencent/hy4-preview"`
+	OpenRouterModel   string        `env:"OPENROUTER_MODEL" yaml:"openRouterModel" envDefault:"google/gemini-3-flash-preview"`
 	OpenRouterBaseURL string        `env:"OPENROUTER_BASE_URL" yaml:"openRouterBaseUrl" envDefault:"https://openrouter.ai/api/v1"`
 	AIJudgeTimeout    time.Duration `env:"SIGAME_AI_TIMEOUT" yaml:"aiTimeout" envDefault:"25s"`
 	AITemperature     float64       `env:"SIGAME_AI_TEMPERATURE" yaml:"aiTemperature" envDefault:"0"`
