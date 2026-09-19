@@ -21,3 +21,5 @@ config.local.yaml
 .vscode/
 # go
 /vendor/
+# local MCP config with secrets (Penpot token)
+.mcp.json

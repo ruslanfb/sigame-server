@@ -15,6 +15,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
@@ -114,6 +115,10 @@ type Deps struct {
 	// FFProbe reports whether ffprobe was found (shown in /system/info).
 	FFProbe bool
 
+	// WebFS is the built web client (web/dist). When it contains index.html
+	// it is served at / with SPA fallback; otherwise / shows a docs landing page.
+	WebFS fs.FS
+
 	Version   string       // reported in OpenAPI info.version and /system/info; default "dev"
 	Logger    *slog.Logger // default slog.Default()
 	StartedAt time.Time    // default time.Now()
@@ -185,7 +190,11 @@ func New(d Deps) (*Server, error) {
 	s.Router = r
 	s.API = api
 
-	r.Get("/", s.rootPage)
+	if hasIndex(d.WebFS) {
+		r.Handle("/*", spaHandler(d.WebFS))
+	} else {
+		r.Get("/", s.rootPage)
+	}
 
 	s.registerPacks()
 	s.registerNested()
