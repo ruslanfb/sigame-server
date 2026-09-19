@@ -1,21 +1,11 @@
-import { useEffect, useState } from 'react';
 import { msToClock, timerProgress } from '../lib/clock.ts';
+import { useNow } from '../lib/useNow.ts';
 import type { TimerState } from '../state/game.ts';
 
 /** Progress bar for one engine timer; re-renders on animation frames while running. */
 export function TimerBar({ timer }: { timer: TimerState }) {
-  const [, tick] = useState(0);
-  useEffect(() => {
-    if (timer.paused) return;
-    let raf = 0;
-    const loop = () => {
-      tick((n) => n + 1);
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
-  }, [timer.paused, timer.id, timer.startedAtLocal]);
-  const { remainingMs, fraction } = timerProgress(timer, performance.now());
+  const localNow = useNow(timer.paused ? 0 : 'raf');
+  const { remainingMs, fraction } = timerProgress(timer, localNow);
   return (
     <div className="text-xs">
       <div className="flex justify-between text-muted">

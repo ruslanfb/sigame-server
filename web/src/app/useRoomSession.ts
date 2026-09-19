@@ -22,7 +22,9 @@ export function useRoomSession(code: string): { status: RoomSessionStatus; handl
   const status: RoomSessionStatus = !session ? 'noSession' : session.roomCode !== code ? 'wrongRoom' : 'ready';
   const [handles, setHandles] = useState<RoomHandles | null>(null);
   const sessionRef = useRef(session);
-  sessionRef.current = session;
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
 
   const token = status === 'ready' ? session!.sessionToken : null;
 

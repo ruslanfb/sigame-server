@@ -24,6 +24,16 @@
   --color-button-lit: var(--sg-button-lit);
   --color-button-pressed: var(--sg-button-pressed);
   --color-button-locked: var(--sg-button-locked);
+  --color-bg-2: var(--sg-bg-2);
+  --color-surface-3: var(--sg-surface-3);
+  --color-border-strong: var(--sg-border-strong);
+  --color-text-inverse: var(--sg-text-inverse);
+  --color-primary: var(--sg-primary);
+  --color-primary-2: var(--sg-primary-2);
+  --color-primary-contrast: var(--sg-primary-contrast);
+  --color-accent-2: var(--sg-accent-2);
+  --color-accent-3: var(--sg-accent-3);
+  --color-info: var(--sg-info);
 
   --spacing-1: var(--sg-space-1);
   --spacing-2: var(--sg-space-2);
@@ -40,7 +50,12 @@
   --radius-full: var(--sg-radius-full);
 
   --font-sans: var(--sg-font-sans);
+  --font-display: var(--sg-font-display);
   --font-mono: var(--sg-font-mono);
+  --shadow-glow-gold: var(--sg-glow-gold);
+  --shadow-glow-blue: var(--sg-glow-blue);
+  --shadow-glow-danger: var(--sg-glow-danger);
+  --shadow-glow-success: var(--sg-glow-success);
 
   --shadow-sm: var(--sg-shadow-sm);
   --shadow-md: var(--sg-shadow-md);
@@ -55,10 +70,34 @@ body,
 
 body {
   margin: 0;
-  background: var(--sg-bg);
+  background: var(--sg-bg) var(--sg-gradient-bg) fixed;
   color: var(--sg-text);
   font-family: var(--sg-font-sans);
   -webkit-font-smoothing: antialiased;
   /* the buzzer must never trigger scroll/zoom gestures */
   touch-action: manipulation;
+}
+
+/* Millionaire-style hexagonal plate (answers, prices, money ladder). */
+.hex {
+  clip-path: var(--sg-hex-clip);
+  background: var(--sg-gradient-hex);
+}
+.hex-active {
+  background: var(--sg-gradient-hex-active);
+}
+.hex-gold {
+  background: var(--sg-gradient-gold);
+  color: var(--sg-accent-contrast);
+}
+.glow-gold {
+  box-shadow: var(--sg-glow-gold);
+}
+.glow-blue {
+  box-shadow: var(--sg-glow-blue);
+}
+.font-display {
+  font-family: var(--sg-font-display);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }

@@ -1,7 +1,8 @@
 import { clsx } from 'clsx';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRoom } from '../app/roomContext.ts';
 import { useBuzzerStore } from '../state/buzzer.ts';
+import { useNow } from '../lib/useNow.ts';
 
 /**
  * The player's button. Press handling follows docs/protocol.md §6.3: the press
@@ -15,7 +16,6 @@ export function BuzzerButton() {
   const soundEnabled = useBuzzerStore((s) => s.soundEnabled);
   const setSound = useBuzzerStore((s) => s.setSound);
   const ref = useRef<HTMLButtonElement>(null);
-  const [, tick] = useState(0);
 
   useEffect(() => {
     const el = ref.current;
@@ -38,12 +38,8 @@ export function BuzzerButton() {
   }, [arm]);
 
   // countdown for the lockout badge
-  const locked = state.lockedUntilLocal > performance.now();
-  useEffect(() => {
-    if (!locked) return;
-    const id = setInterval(() => tick((n) => n + 1), 250);
-    return () => clearInterval(id);
-  }, [locked]);
+  const localNow = useNow(250);
+  const locked = state.lockedUntilLocal > localNow;
 
   const phase = locked && (state.phase === 'armed' || state.phase === 'lit' || state.phase === 'idle') ? 'locked' : state.phase;
   const label =
@@ -56,7 +52,7 @@ export function BuzzerButton() {
             ? state.ack.status
             : 'sent'
           : phase === 'locked'
-            ? `locked ${Math.ceil((state.lockedUntilLocal - performance.now()) / 1000)} s`
+            ? `locked ${Math.ceil((state.lockedUntilLocal - localNow) / 1000)} s`
             : phase === 'resolved'
               ? state.result?.kind === 'nobody'
                 ? 'nobody'

@@ -116,8 +116,11 @@ export class ArmController {
   private lockoutTimer: unknown = null;
   private rafActive = false;
   private disposed = false;
+  private readonly deps: ArmControllerDeps;
 
-  constructor(private readonly deps: ArmControllerDeps) {}
+  constructor(deps: ArmControllerDeps) {
+    this.deps = deps;
+  }
 
   get current(): ArmState {
     return this.state;

@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { fmtMs } from '../lib/format.ts';
+import { useNow } from '../lib/useNow.ts';
 import { useBuzzerStore } from '../state/buzzer.ts';
 import { useDebugStore } from '../state/debug.ts';
 import { activePrompts, useGameStore } from '../state/game.ts';
@@ -21,11 +22,7 @@ export function DebugPanel() {
   const game = useGameStore((s) => s.game);
   const welcome = useRoomStore((s) => s.welcome);
   const [open, setOpen] = useState(true);
-  const [, tick] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => tick((n) => n + 1), 500);
-    return () => clearInterval(id);
-  }, []);
+  const localNow = useNow(500);
 
   return (
     <Card
@@ -75,7 +72,7 @@ export function DebugPanel() {
               {arm.pressSeq ? ` press@${arm.pressLocal.toFixed(1)} (${(arm.pressLocal - arm.litLocal).toFixed(0)} ms)` : ''}
               {arm.ack ? ` ack ${arm.ack.status}${arm.ack.reactionMs ? ` ${arm.ack.reactionMs.toFixed(0)} ms` : ''}` : ''}
               {arm.result ? ` result ${arm.result.kind}${arm.result.winnerId ? ` ${arm.result.winnerId.slice(0, 8)}` : ''}` : ''}
-              {arm.lockedUntilLocal > performance.now() ? ` locked ${Math.ceil((arm.lockedUntilLocal - performance.now()) / 1000)} s` : ''}
+              {arm.lockedUntilLocal > localNow ? ` locked ${Math.ceil((arm.lockedUntilLocal - localNow) / 1000)} s` : ''}
             </div>
             <div className="mt-2">
               <TimerList timers={game.timers} />

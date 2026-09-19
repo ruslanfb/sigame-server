@@ -44,10 +44,10 @@ export class SyncController {
   /** Number of SYNC_ACKs received on the current connection. */
   acks = 0;
 
-  constructor(
-    private readonly conn: RoomConnection,
-    opts: SyncOptions = {},
-  ) {
+  private readonly conn: RoomConnection;
+
+  constructor(conn: RoomConnection, opts: SyncOptions = {}) {
+    this.conn = conn;
     this.now = opts.now ?? (() => performance.now());
     this.setTimeoutFn = opts.setTimeout ?? ((cb, ms) => setTimeout(cb, ms));
     this.clearTimeoutFn = opts.clearTimeout ?? ((id) => clearTimeout(id as ReturnType<typeof setTimeout>));
