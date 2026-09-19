@@ -75,23 +75,29 @@
 - Модуль Go: `sigame` (без VCS-хоста). Время на проводе — мс (int64). Медиа — content-addressed (sha256) на диске, HTTP Range через `http.ServeContent`.
 - `index.html` в корне — отдельная мини-игра (Happy Wheels-like на Matter.js), к бекенду отношения не имеет.
 
-## 6. Реализация (обновлено 2026-09-19)
-GitHub: https://github.com/ruslanfb/sigame-server (public, `main`). Все 13 пакетов, `go test -race ./...` зелёный.
+## 6. Реализация — ИТОГ (обновлено 2026-09-19, утро)
+GitHub: https://github.com/ruslanfb/sigame-server (public, `main`, 20+ коммитов). `go test -race ./...` — 13 пакетов зелёные,
+включая сквозной тест `cmd/sigame/e2e_test.go` (REST → WebSocket → два сыгранных вопроса → reconnect → закрытие комнаты).
 
 | Пакет | Состояние |
 |---|---|
-| `internal/packs` + `internal/db` | ✅ модель, валидация, репозиторий (optimistic concurrency, refcount медиа, поиск с кириллицей), миграции |
-| `internal/media` | ✅ content-addressed хранилище, сниффинг MIME, ffprobe, HTTP Range-раздача, CSP для html |
-| `internal/siq` | ✅ импорт v3/v4/v5, экспорт v5, отчёт совместимости; 58 паков / 5331 вопрос; round-trip |
-| `internal/ai` | ✅ OpenRouter-судья (structured outputs, retry, кэш), fuzzy-судья по правилам SIGame, композит |
-| `internal/engine` | ✅ чистый движок: все типы вопросов, финал, апелляции, таймеры, проекции по ролям (40 сценариев) |
-| `internal/buzzer` | ✅ AnchoredHybrid + симулятор (≥ 99.6% побед быстрой реакции при разбросе ≥ 20 мс; адверсары ограничены) |
-| `internal/room` + `internal/ws` | ✅ актор комнаты, сессии/resume, интеграция движка и кнопки, ИИ/гибридный ведущий, WebSocket с якорями RTT |
-| `internal/httpapi` | ✅ 43 операции OpenAPI 3.1 (паки, медиа, .siq, комнаты, пресеты кнопки, ИИ, система), Scalar на `/docs` |
-| `cmd/sigame` | ✅ сборка сервера, баннер LAN, graceful shutdown; дымовой тест REST пройден |
-| Сквозной тест (REST → WS → вопрос) | 🔄 агент пишет `cmd/sigame/e2e_test.go` |
+| `packs`, `db` | ✅ модель, валидация, репозиторий, миграции |
+| `media` | ✅ хранилище (sha256), сниффинг, ffprobe, HTTP Range, CSP |
+| `siq` | ✅ импорт v3/v4/v5, экспорт v5, отчёт; 58 паков / 5331 вопрос; round-trip |
+| `ai` | ✅ OpenRouter-судья (+reasoning-модели), fuzzy-судья, композит; **живая проверка с hy4-preview: 3/3 верно, ~9 с** |
+| `engine` | ✅ все типы вопросов, финал, апелляции, таймеры, проекции (40 сценариев) |
+| `buzzer` | ✅ AnchoredHybrid + симулятор (≥ 99.6% побед быстрой реакции; адверсары ограничены) |
+| `room`, `ws` | ✅ актор, сессии/resume, кнопка, ИИ/гибрид, WebSocket с якорями RTT |
+| `httpapi` | ✅ 43 операции OpenAPI 3.1 (`docs/openapi.json`), Scalar `/docs`, security scheme для host-токена |
+| `cmd/sigame` | ✅ сборка, баннер LAN, graceful shutdown, `--print-openapi`, e2e |
 
-Документация: `README.md`, `docs/api.md`, `docs/protocol.md`, `docs/protocol-engine.md`, `docs/buzzer.md`, `docs/packs.md`,
-`docs/ai-showman.md`, `docs/ops.md`, `docs/adr/*`.
+Ревью (безопасность, документация) — найденное исправлено: утечка эталонных ответов через `AI_VERDICT`, захват места
+ведущего/хоста по имени, флаги античита в `SYNC_ACK`, полномочия хоста-игрока, усиление MISFIRE, constant-time сравнение
+токенов, recover в акторе/ридере; спека: enum-теги, security scheme, форма join/create в протоколе.
 
-Следующие шаги: сквозной тест → код-ревью (безопасность/протокол/корректность) → `docs/openapi.json` → финальный отчёт.
+Открытые пункты (не блокируют LAN-использование):
+- Для публичного интернета нет аутентификации REST (паки/медиа/ИИ-тест/создание комнат) и per-IP лимитов — см. предупреждение в `docs/ops.md`; план: `SIGAME_ADMIN_TOKEN` + лимитер.
+- Ревью конкурентности было прервано лимитом сессии — стоит повторить.
+- Доки: добавить диаграммы stake/secret/final/appeal и описание полей `SNAPSHOT.game` (список замечаний в отчёте ревью).
+- `hy4-preview` медленный (~9–16 с на вердикт): для живой игры рекомендована `google/gemini-3-flash-preview` (~2 с) — см. `docs/ai-showman.md`.
+- `writtenAll`/`allPlay` (письменный режим вместо гонки) — не реализовано в v1 (422 при создании комнаты).
