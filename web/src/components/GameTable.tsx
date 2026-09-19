@@ -74,7 +74,7 @@ export function GameTable({
         className={clsx('w-full min-w-0', editMode && dead && 'opacity-80', size === 'compact' && 'flex-1 basis-12')}
       >
         <span className={clsx('font-display flex w-full items-center justify-center tabular-nums whitespace-nowrap', priceCls)}>
-          {dead && !editMode ? '' : price(c.price)}
+          {dead && !editMode && !isActive ? '' : price(c.price)}
         </span>
       </HexButton>
     );
