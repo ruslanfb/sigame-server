@@ -23,7 +23,10 @@ storage.text = (str, x, y, opts = {}) => {
   else if (fonts.manrope) fonts.manrope.applyToText(t, fonts.manrope.variants.find(v => v.fontWeight === String(opts.weight || 500)) || undefined);
   t.fontSize = String(opts.size || 16); t.fills = [{ fillColor: opts.color || T.text, fillOpacity: 1 }];
   if (opts.align) t.align = opts.align; if (opts.upper) t.textTransform = 'uppercase'; if (opts.letterSpacing) t.letterSpacing = String(opts.letterSpacing);
-  t.growType = opts.grow || 'auto-width'; if (opts.w) { t.resize(opts.w, opts.h || 24); t.growType = 'auto-height'; } if (opts.name) t.name = opts.name;
+  t.growType = opts.grow || 'auto-width';
+  // w only → wrap to width (auto-height); w+h → fixed box so verticalAlign='center' centers labels on plates.
+  if (opts.w) { t.resize(opts.w, opts.h || 24); t.growType = opts.h ? 'fixed' : 'auto-height'; }
+  if (opts.name) t.name = opts.name;
   return t;
 };
 storage.hexPlate = (parent, x, y, w, h, opts = {}) => {
