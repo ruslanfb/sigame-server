@@ -101,3 +101,29 @@ GitHub: https://github.com/ruslanfb/sigame-server (public, `main`, 20+ комм�
 - Доки: добавить диаграммы stake/secret/final/appeal и описание полей `SNAPSHOT.game` (список замечаний в отчёте ревью).
 - `hy4-preview` медленный (~9–16 с на вердикт): для живой игры рекомендована `google/gemini-3-flash-preview` (~2 с) — см. `docs/ai-showman.md`.
 - `writtenAll`/`allPlay` (письменный режим вместо гонки) — не реализовано в v1 (422 при создании комнаты).
+
+## 7. Фронт (начато 2026-09-19, днём)
+Решения: React 19 + TypeScript + Vite, папка `web/` в этом репо, `web/dist` вшивается в бинарник (Go embed; серверная раздача
+SPA уже есть: `internal/httpapi/spa.go`, `Deps.WebFS`), экраны v1 — игрок (телефон), пульт ведущего/хоста, табло; стили —
+Tailwind v4 + CSS-токены (`web/src/styles/tokens.css`), значения заменим токенами из Penpot.
+
+Состояние `web/` (WIP, агент остановлен по просьбе пользователя перед перезапуском claude):
+- есть скаффолд: `src/api` (клиент openapi-fetch + сгенерированные типы), `src/ws` (соединение, envelope, sync часов, типы),
+  `src/buzzer` (armController: ARM_ACK, зажигание по расписанию, PRESS/MISFIRE), `src/state` (zustand: session/room/game/buzzer/toast),
+  `src/routes` (Join, Host, HostRoom, PlayerRoom, Table, RoomShell), `src/components`, `web/README.md`, `scripts/postbuild.mjs`;
+- **не доделано**: `npm run typecheck` — 2 ошибки (`src/components/DebugPanel.tsx:32` тип children; `src/ws/sync.ts:48` —
+  parameter properties запрещены `erasableSyntaxOnly`), `npm run lint` — 6 ошибок, unit-тестов (vitest) ещё нет, сборка `dist` не проходит;
+- CI: добавлен job `web` (typecheck/lint/test/build) и cross-build с вшитым `web/dist` — будет красным, пока не починен typecheck.
+
+Следующие шаги фронта:
+1. Починить typecheck/lint, написать vitest-тесты (armController: свет ±2 мс, MISFIRE до света, один PRESS на arm; sync: prevSeq/prevC4; reconnect HELLO{lastSeq}), проверить против реального сервера (`make run` + `npm run dev`).
+2. `web/embed.go` (`//go:embed all:dist`, `func Dist() fs.FS`) + `WebFS: web.Dist()` в `cmd/sigame/app.go`; `make release`.
+3. Экраны: игрок (лобби/кнопка/ответ/ставки/выбор игрока/удаление темы/апелляции), пульт ведущего (создание комнаты, валидация с
+   эталонами, счёт, пауза, kick, аудит кнопки, подсказки ИИ), табло (таблица, вопрос с медиа, счёт, таймеры).
+4. Подключить дизайн из Penpot (MCP), заменить токены.
+
+MCP (локально, `scripts/mcp-local.sh start|stop|status`, логи в `~/.sigame-mcp`): Penpot MCP (`@penpot/mcp` 2.15.4 в
+`~/.sigame-mcp/src/penpot-mcp`, плагин `http://localhost:4400/manifest.json`, MCP `http://localhost:4401/mcp`), Serena (`:14181/mcp`),
+Chrome с CDP `:9222` (отдельный профиль `~/.sigame-chrome-profile`). Конфиг клиентов — `.mcp.json` (в .gitignore; содержит токен
+прямого сервера `penpot` на `http://192.168.10.217:9001/mcp/stream`). Чтобы MCP работал: в Penpot (192.168.10.217:9001) загрузить
+плагин по URL и нажать «Connect to MCP server», панель не закрывать; перезапустить claude, подтвердить серверы из `.mcp.json`.

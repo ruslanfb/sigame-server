@@ -23,3 +23,5 @@ config.local.yaml
 /vendor/
 # local MCP config with secrets (Penpot token)
 .mcp.json
+# Serena MCP project cache
+.serena/

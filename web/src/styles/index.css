@@ -1,0 +1,64 @@
+@import 'tailwindcss';
+@import './tokens.css';
+
+/*
+ * Tailwind v4 theme: utilities like `bg-accent`, `text-muted`, `rounded-md`
+ * resolve to the `--sg-*` tokens (placeholders until the Penpot tokens land).
+ * `inline` makes utilities reference the token variable directly so the dark
+ * scheme overrides cascade correctly.
+ */
+@theme inline {
+  --color-bg: var(--sg-bg);
+  --color-surface: var(--sg-surface);
+  --color-surface-2: var(--sg-surface-2);
+  --color-text: var(--sg-text);
+  --color-muted: var(--sg-muted);
+  --color-border: var(--sg-border);
+  --color-accent: var(--sg-accent);
+  --color-accent-contrast: var(--sg-accent-contrast);
+  --color-danger: var(--sg-danger);
+  --color-success: var(--sg-success);
+  --color-warning: var(--sg-warning);
+  --color-button-idle: var(--sg-button-idle);
+  --color-button-armed: var(--sg-button-armed);
+  --color-button-lit: var(--sg-button-lit);
+  --color-button-pressed: var(--sg-button-pressed);
+  --color-button-locked: var(--sg-button-locked);
+
+  --spacing-1: var(--sg-space-1);
+  --spacing-2: var(--sg-space-2);
+  --spacing-3: var(--sg-space-3);
+  --spacing-4: var(--sg-space-4);
+  --spacing-5: var(--sg-space-5);
+  --spacing-6: var(--sg-space-6);
+  --spacing-7: var(--sg-space-7);
+  --spacing-8: var(--sg-space-8);
+
+  --radius-sm: var(--sg-radius-sm);
+  --radius-md: var(--sg-radius-md);
+  --radius-lg: var(--sg-radius-lg);
+  --radius-full: var(--sg-radius-full);
+
+  --font-sans: var(--sg-font-sans);
+  --font-mono: var(--sg-font-mono);
+
+  --shadow-sm: var(--sg-shadow-sm);
+  --shadow-md: var(--sg-shadow-md);
+  --shadow-lg: var(--sg-shadow-lg);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--sg-bg);
+  color: var(--sg-text);
+  font-family: var(--sg-font-sans);
+  -webkit-font-smoothing: antialiased;
+  /* the buzzer must never trigger scroll/zoom gestures */
+  touch-action: manipulation;
+}
